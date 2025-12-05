@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhe da Ocorrência{% endblock %}
+
+{% block content %}
+
+<h5 class="mb-3">Detalhe da ocorrência</h5>
+
+<div class="card mb-3">
+  <div class="card-body">
+
+    <p><strong>Tipo:</strong> {{ ocorrencia.tipo }}</p>
+    <p><strong>Matrícula:</strong> {{ ocorrencia.matricula or '-' }}</p>
+    <p><strong>Data ocorrência:</strong> {{ ocorrencia.data }}</p>
+    <p><strong>Hora ocorrência:</strong> {{ ocorrencia.hora }}</p>
+
+    <hr>
+
+    <p><strong>Morada completa:</strong> {{ ocorrencia.morada or '-' }}</p>
+    <p><strong>Latitude:</strong> {{ ocorrencia.latitude or '-' }}</p>
+    <p><strong>Longitude:</strong> {{ ocorrencia.longitude or '-' }}</p>
+
+    <hr>
+
+    <p><strong>Descrição:</strong><br>
+        {{ ocorrencia.descricao or '-' }}
+    </p>
+
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <h6 class="card-title">Registo principal deste serviço</h6>
+    <p class="mb-1"><strong>Data:</strong> {{ registo.data }}</p>
+    <p class="mb-1"><strong>Período:</strong> {{ registo.periodo }}</p>
+    <p class="mb-1"><strong>Viatura:</strong> {{ registo.viatura or '-' }}</p>
+    <p class="mb-1"><strong>Nº Ordem CCT:</strong> {{ registo.num_ordem_cct or '-' }}</p>
+    <p class="mb-1"><strong>Nº Ordem PM:</strong> {{ registo.num_ordem_pm or '-' }}</p>
+  </div>
+</div>
+
+<div class="mt-3 d-flex justify-content-between">
+    <a href="{{ url_for('index') }}" class="btn btn-secondary">Voltar</a>
+
+    <form method="post"
+          action="{{ url_for('apagar_ocorrencia', occ_id=ocorrencia.id) }}"
+          onsubmit="return confirm('Eliminar esta ocorrência?');">
+        <button type="submit" class="btn btn-outline-danger">
+            Eliminar
+        </button>
+    </form>
+</div>
+
+{% endblock %}

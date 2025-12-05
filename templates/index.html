@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Sistema de Fiscalização - CARRIS{% endblock %}
+
+{% block content %}
+
+<div class="main-form-card mb-4">
+  <div class="row">
+    <div class="col-12 mb-2">
+        <div class="main-form-title">Formulário Principal</div>
+    </div>
+  </div>
+
+  <form method="post" class="row g-3">
+      <input type="hidden" name="acao" value="guardar_registo">
+
+      <!-- Data -->
+      <div class="col-12 col-lg-4">
+          <label class="section-label mb-1">Data *</label>
+          <input type="date"
+                 name="data"
+                 class="form-control"
+                 value="{{ data_iso }}">
+      </div>
+
+      <!-- Período do dia -->
+      <div class="col-12 col-lg-4">
+          <label class="section-label mb-1">Período do dia *</label>
+          <div class="d-flex gap-2 mt-1">
+              <input type="hidden" name="periodo"
+                     id="inputPeriodo"
+                     value="{{ registo.periodo }}">
+
+              <button type="button"
+                      class="btn btn-periodo {% if registo.periodo == 'Manhã' %}active{% endif %}"
+                      onclick="selecionarPeriodo('Manhã')"
+                      id="btnManha">
+                  Manhã
+              </button>
+
+              <button type="button"
+                      class="btn btn-periodo {% if registo.periodo == 'Tarde' %}active{% endif %}"
+                      onclick="selecionarPeriodo('Tarde')"
+                      id="btnTarde">
+                  Tarde
+              </button>
+          </div>
+      </div>
+
+      <!-- Viatura -->
+      <div class="col-12 col-lg-4">
+          <label class="section-label mb-1">Viatura *</label>
+          <select name="viatura"
+                  id="selectViatura"
+                  class="form-select"
+                  onchange="mostrarOutroVeiculo()">
+
+              <option value="" {% if not registo.viatura %}selected{% endif %} disabled>
+                  Selecione uma viatura
+              </option>
+
+              {% for v in viaturas %}
+                  <option value="{{ v }}"
+                          {% if registo.viatura == v %}selected{% endif %}>
+                      {{ v }}
+                  </option>
+              {% endfor %}
+
+              <!-- opção para escrever outra viatura -->
+              <option value="OUTRA"
+                      {% if registo.viatura and registo.viatura not in viaturas %}selected{% endif %}>
+                  Outra
+              </option>
+          </select>
+
+          <!-- campo de texto que só aparece se a opção "Outra" estiver selecionada -->
+          <input type="text"
+                 id="inputOutroVeiculo"
+                 name="outra_viatura"
+                 class="form-control mt-2"
+                 placeholder="Introduz outra viatura"
+                 style="display:none"
+                 value="{% if registo.viatura and registo.viatura not in viaturas %}{{ registo.viatura }}{% endif %}">
+      </div>
+
+      <!-- CCT -->
+      <div class="col-12 col-lg-6">
+          <label class="section-label mb-1">CCT *</label>
+          <input type="number"
+                 name="num_ordem_cct"
+                 class="form-control"
+                 placeholder="Número de CCT"
+                 value="{{ registo.num_ordem_cct }}">
+      </div>
+
+      <!-- Número PM -->
+      <div class="col-12 col-lg-6">
+          <label class="section-label mb-1">Número PM *</label>
+          <input type="number"
+                 name="num_ordem_pm"
+                 class="form-control"
+                 placeholder="Insere o número do agente PM"
+                 value="{{ registo.num_ordem_pm }}">
+      </div>
+
+      <div class="col-12 d-flex justify-content-end mt-2">
+          <button type="submit" class="btn btn-guardar">
+              Guardar Dados
+          </button>
+      </div>
+  </form>
+
+  {% if registo.registo_guardado %}
+  <!-- 🔥 DADOS DO REGISTO → 3 COLUNAS -->
+  <div class="mt-4 p-3 rounded-3 border" style="background:#f9fafb;">
+      <div class="section-label mb-2">Dados do Registo:</div>
+      <div class="row small">
+
+          <!-- COLUNA 1 -->
+          <div class="col-12 col-md-4">
+              <p class="mb-1"><strong>Data:</strong> {{ registo.data }}</p>
+              <p class="mb-1"><strong>CCT:</strong> {{ registo.num_ordem_cct or '-' }}</p>
+          </div>
+
+          <!-- COLUNA 2 -->
+          <div class="col-12 col-md-4">
+              <p class="mb-1"><strong>Período:</strong> {{ registo.periodo }}</p>
+              <p class="mb-1"><strong>Número PM:</strong> {{ registo.num_ordem_pm or '-' }}</p>
+          </div>
+
+          <!-- COLUNA 3 (VIATURA SEPARADA) -->
+          <div class="col-12 col-md-4">
+              <p class="mb-1"><strong>Viatura:</strong> {{ registo.viatura or '-' }}</p>
+          </div>
+
+      </div>
+  </div>
+  {% endif %}
+</div>
+
+{% if registo.registo_guardado %}
+
+<!-- 🔥 REGISTO DE OCORRÊNCIAS EM CARTÕES -->
+<div class="card mb-3">
+  <div class="card-body">
+    <h5 class="card-title mb-3" style="font-size:22px; font-weight:600;">
+        Registo de Ocorrências
+    </h5>
+
+    <div class="row g-3 mb-3 justify-content-start">
+      {% for tipo in tipos_ocorrencia %}
+      <div class="col-12 col-sm-6 col-lg-3 d-flex">
+        <a href="{{ url_for('nova_ocorrencia') }}?tipo={{ tipo | urlencode }}"
+           class="oc-box flex-fill text-center">
+            <div class="oc-title">{{ tipo }}</div>
+            <div class="oc-sub">Nova Ocorrência</div>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+
+    <hr>
+
+    <h6 class="mb-2">Ocorrências registadas</h6>
+
+    {% if ocorrencias %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>Hora</th>
+            <th>Tipo</th>
+            <th>Matrícula</th>
+            <th class="text-end">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for o in ocorrencias %}
+          <tr>
+            <td><a href="{{ url_for('detalhe_ocorrencia', occ_id=o.id) }}" class="text-decoration-none">{{ o.hora }}</a></td>
+            <td><a href="{{ url_for('detalhe_ocorrencia', occ_id=o.id) }}" class="text-decoration-none">{{ o.tipo }}</a></td>
+            <td><a href="{{ url_for('detalhe_ocorrencia', occ_id=o.id) }}" class="text-decoration-none">{{ o.matricula or '-' }}</a></td>
+            <td class="text-end">
+              <form method="post" action="{{ url_for('apagar_ocorrencia', occ_id=o.id) }}"
+                    onsubmit="return confirm('Eliminar esta ocorrência?');">
+                <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="alert alert-secondary mb-0">Ainda não há ocorrências registadas.</div>
+    {% endif %}
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('fim_servico') }}" onsubmit="return confirm('Terminar serviço e gerar ficheiro CSV?');">
+    <button type="submit" class="btn btn-danger w-100">Fim de serviço (gerar CSV)</button>
+</form>
+
+{% else %}
+<div class="alert alert-warning">Guarda primeiro o formulário principal para poderes registar ocorrências.</div>
+{% endif %}
+
+<script>
+    function selecionarPeriodo(valor) {
+        const inputPeriodo = document.getElementById('inputPeriodo');
+        const btnManha = document.getElementById('btnManha');
+        const btnTarde = document.getElementById('btnTarde');
+
+        inputPeriodo.value = valor;
+        btnManha.classList.toggle('active', valor === 'Manhã');
+        btnTarde.classList.toggle('active', valor === 'Tarde');
+    }
+
+    function mostrarOutroVeiculo() {
+        const select = document.getElementById("selectViatura");
+        const campoOutro = document.getElementById("inputOutroVeiculo");
+
+        if (select.value === "OUTRA") {
+            campoOutro.style.display = "block";
+            campoOutro.required = true;
+        } else {
+            campoOutro.style.display = "none";
+            campoOutro.required = false;
+        }
+    }
+
+    // garantir que, se já tiver sido escolhida outra viatura, o campo aparece ao carregar a página
+    window.onload = function () {
+        mostrarOutroVeiculo();
+    }
+</script>
+
+{% endblock %}
