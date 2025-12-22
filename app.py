@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, Response
+from flask import Flask, render_template, request, redirect, url_for, Response, jsonify
 from datetime import datetime, date
 import os
 import json
@@ -39,36 +39,36 @@ def carregar_viaturas():
     return viaturas
 
 
-def _default_data():
-    return {
-        "registo_principal": {
-            "data": date.today().strftime("%d/%m/%Y"),
-            "periodo": "Manhã",
-            "viatura": "",
-            "num_ordem_cct": "",
-            "num_ordem_pm": "",
-            "registo_guardado": False,
-        },
-        "ocorrencias": []
-    }
-
-
 def carregar_dados():
     path = get_data_path()
     if not os.path.exists(path):
-        return _default_data()
+        return {
+            "registo_principal": {
+                "data": date.today().strftime("%d/%m/%Y"),
+                "periodo": "Manhã",
+                "viatura": "",
+                "num_ordem_cct": "",
+                "num_ordem_pm": "",
+                "registo_guardado": False,
+            },
+            "ocorrencias": []
+        }
 
     try:
         with open(path, "r", encoding="utf-8") as f:
-            dados = json.load(f)
-            # garante chaves mínimas
-            if "registo_principal" not in dados:
-                dados["registo_principal"] = _default_data()["registo_principal"]
-            if "ocorrencias" not in dados:
-                dados["ocorrencias"] = []
-            return dados
+            return json.load(f)
     except Exception:
-        return _default_data()
+        return {
+            "registo_principal": {
+                "data": date.today().strftime("%d/%m/%Y"),
+                "periodo": "Manhã",
+                "viatura": "",
+                "num_ordem_cct": "",
+                "num_ordem_pm": "",
+                "registo_guardado": False,
+            },
+            "ocorrencias": []
+        }
 
 
 def guardar_dados(dados):
@@ -81,7 +81,7 @@ def proximo_id_ocorrencia(dados):
     ocorrencias = dados.get("ocorrencias", [])
     if not ocorrencias:
         return 1
-    return max(o.get("id", 0) for o in ocorrencias) + 1
+    return max(int(o.get("id", 0)) for o in ocorrencias) + 1
 
 
 # =========================
@@ -95,21 +95,8 @@ def parse_ddmmyyyy(s):
         return None
 
 
-def parse_hhmm(s):
-    try:
-        return datetime.strptime(s, "%H:%M").time()
-    except Exception:
-        return None
-
-
 def contains(hay, needle):
-    return needle.lower() in (hay or "").lower()
-
-
-def sort_key_ocorrencia(o):
-    d = parse_ddmmyyyy(o.get("data", "")) or date.min
-    t = parse_hhmm(o.get("hora", "")) or datetime.min.time()
-    return (d, t, o.get("id", 0))
+    return (needle or "").lower() in (hay or "").lower()
 
 
 # =========================
@@ -121,12 +108,16 @@ def index():
     dados = carregar_dados()
     registo = dados["registo_principal"]
 
-    ocorrencias = sorted(dados.get("ocorrencias", []), key=sort_key_ocorrencia)
+    ocorrencias = sorted(
+        dados.get("ocorrencias", []),
+        key=lambda o: (o.get("data", ""), o.get("hora", "")),
+        reverse=False
+    )
 
     viaturas = carregar_viaturas()
 
     if request.method == "POST" and request.form.get("acao") == "guardar_registo":
-        data_form = request.form.get("data", "").strip()  # yyyy-mm-dd
+        data_form = request.form.get("data", "").strip()
         if data_form:
             try:
                 registo["data"] = datetime.strptime(data_form, "%Y-%m-%d").strftime("%d/%m/%Y")
@@ -166,7 +157,7 @@ def index():
             "Multas em corredor BUS",
             "Multas em áreas de paragem",
             "Multas a dificultar manobra",
-            "Multa – outras situações",
+            "Multa - outras situações",
             "Pedidos de reboque",
             "Pedidos de bloqueamento",
             "Advertências",
@@ -231,26 +222,14 @@ def nova_ocorrencia():
     return redirect(url_for("index"))
 
 
-# ✅ ESTAS 2 ROTAS FALTAVAM (e davam o teu BuildError no template)
 @app.route("/ocorrencias/<int:occ_id>")
 def detalhe_ocorrencia(occ_id):
     dados = carregar_dados()
     ocorrencias = dados.get("ocorrencias", [])
-    occ = next((o for o in ocorrencias if o.get("id") == occ_id), None)
+    occ = next((o for o in ocorrencias if int(o.get("id", 0)) == occ_id), None)
     if not occ:
         return redirect(url_for("index"))
-
-    registo = dados["registo_principal"]
-    return render_template("detalhe_ocorrencia.html", ocorrencia=occ, registo=registo)
-
-
-@app.route("/ocorrencias/<int:occ_id>/apagar", methods=["POST"])
-def apagar_ocorrencia(occ_id):
-    dados = carregar_dados()
-    ocorrencias = dados.get("ocorrencias", [])
-    dados["ocorrencias"] = [o for o in ocorrencias if o.get("id") != occ_id]
-    guardar_dados(dados)
-    return redirect(url_for("index"))
+    return render_template("detalhe_ocorrencia.html", ocorrencia=occ)
 
 
 @app.route("/admin", methods=["GET"])
@@ -258,7 +237,6 @@ def admin():
     dados = carregar_dados()
     ocorrencias = dados.get("ocorrencias", [])
 
-    # filtros (GET)
     data_de = request.args.get("data_de", "").strip()     # yyyy-mm-dd
     data_ate = request.args.get("data_ate", "").strip()   # yyyy-mm-dd
     periodo = request.args.get("periodo", "").strip()
@@ -304,18 +282,18 @@ def admin():
 
         if q:
             blob = " ".join([
-                str(o.get("data", "")),
-                str(o.get("hora", "")),
-                str(o.get("periodo", "")),
-                str(o.get("viatura", "")),
-                str(o.get("numero_ordem_cct", "")),
-                str(o.get("numero_ordem_pm", "")),
-                str(o.get("tipo_ocorrencia", "")),
-                str(o.get("matricula", "")),
-                str(o.get("morada_completa", "")),
-                str(o.get("latitude", "")),
-                str(o.get("longitude", "")),
-                str(o.get("descricao", "")),
+                str(o.get("data","")),
+                str(o.get("hora","")),
+                str(o.get("periodo","")),
+                str(o.get("viatura","")),
+                str(o.get("numero_ordem_cct","")),
+                str(o.get("numero_ordem_pm","")),
+                str(o.get("tipo_ocorrencia","")),
+                str(o.get("matricula","")),
+                str(o.get("morada_completa","")),
+                str(o.get("latitude","")),
+                str(o.get("longitude","")),
+                str(o.get("descricao","")),
             ])
             if not contains(blob, q):
                 ok = False
@@ -323,11 +301,10 @@ def admin():
         if ok:
             filtradas.append(o)
 
-    filtradas.sort(key=sort_key_ocorrencia)
+    filtradas.sort(key=lambda x: (x.get("data", ""), x.get("hora", "")))
 
-    # listas para dropdown
-    tipos = sorted({o.get("tipo_ocorrencia", "") for o in ocorrencias if o.get("tipo_ocorrencia")})
-    viaturas = sorted({o.get("viatura", "") for o in ocorrencias if o.get("viatura")})
+    tipos = sorted({o.get("tipo_ocorrencia","") for o in ocorrencias if o.get("tipo_ocorrencia")})
+    viaturas = sorted({o.get("viatura","") for o in ocorrencias if o.get("viatura")})
 
     return render_template(
         "admin.html",
@@ -348,6 +325,54 @@ def admin():
     )
 
 
+@app.route("/admin/export/json", methods=["GET"])
+def admin_export_json():
+    dados = carregar_dados()
+    return jsonify(dados.get("ocorrencias", []))
+
+
+@app.route("/admin/export/csv", methods=["GET"])
+def admin_export_csv():
+    dados = carregar_dados()
+    ocorrencias = dados.get("ocorrencias", [])
+
+    output = io.StringIO()
+    header = [
+        "data","hora","periodo","viatura","numero_ordem_cct","numero_ordem_pm",
+        "tipo_ocorrencia","matricula","morada_completa","latitude","longitude","descricao"
+    ]
+    output.write(";".join(header) + "\n")
+
+    for o in ocorrencias:
+        morada = (o.get("morada_completa", "") or "").replace("\n", " ").replace(";", ",")
+        descricao = (o.get("descricao", "") or "").replace("\n", " ").replace(";", ",")
+        linha = [
+            o.get("data", ""),
+            o.get("hora", ""),
+            o.get("periodo", ""),
+            o.get("viatura", ""),
+            o.get("numero_ordem_cct", ""),
+            o.get("numero_ordem_pm", ""),
+            o.get("tipo_ocorrencia", ""),
+            o.get("matricula", ""),
+            morada,
+            o.get("latitude", ""),
+            o.get("longitude", ""),
+            descricao,
+        ]
+        output.write(";".join(linha) + "\n")
+
+    csv_data = output.getvalue()
+    output.close()
+
+    filename = f"Vigilantes_Admin_{date.today().strftime('%Y-%m-%d')}.csv"
+    return Response(
+        csv_data.encode("utf-8-sig"),
+        mimetype="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+
 @app.route("/fim_servico", methods=["POST"])
 def fim_servico():
     dados = carregar_dados()
@@ -356,15 +381,14 @@ def fim_servico():
 
     output = io.StringIO()
     header = [
-        "data", "hora", "periodo", "viatura", "numero_ordem_cct", "numero_ordem_pm",
-        "tipo_ocorrencia", "matricula", "morada_completa", "latitude", "longitude", "descricao"
+        "data","hora","periodo","viatura","numero_ordem_cct","numero_ordem_pm",
+        "tipo_ocorrencia","matricula","morada_completa","latitude","longitude","descricao"
     ]
     output.write(";".join(header) + "\n")
 
-    for o in sorted(ocorrencias, key=sort_key_ocorrencia):
+    for o in ocorrencias:
         morada = (o.get("morada_completa", "") or "").replace("\n", " ").replace(";", ",")
         descricao = (o.get("descricao", "") or "").replace("\n", " ").replace(";", ",")
-
         linha = [
             o.get("data", ""),
             o.get("hora", ""),
@@ -389,7 +413,6 @@ def fim_servico():
     cct = registo.get("num_ordem_cct", "")
     filename = f"Vigilantes_{nome_data}_{periodo}_{cct}.csv"
 
-    # limpar para novo serviço
     dados["registo_principal"]["registo_guardado"] = False
     dados["ocorrencias"] = []
     guardar_dados(dados)
@@ -402,7 +425,4 @@ def fim_servico():
 
 
 if __name__ == "__main__":
-    # Render usa a variável PORT
-    port = int(os.environ.get("PORT", "5000"))
-    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(debug=True, host="0.0.0.0", port=5000)

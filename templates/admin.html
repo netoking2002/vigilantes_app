@@ -1,120 +1,121 @@
 {% extends "base.html" %}
-{% block title %}Administrador - Vigilantes{% endblock %}
+{% block title %}Administrador - Sistema de Fiscalização{% endblock %}
 
 {% block content %}
-<div class="main-form-card mb-4">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div class="main-form-title mb-0">Administrador</div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h4 class="mb-0">Administrador</h4>
 
-    <div class="d-flex gap-2">
-      <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin') }}">Limpar filtros</a>
-      <a class="btn btn-outline-primary btn-sm" href="{{ url_for('admin_export_json') }}">Exportar JSON</a>
-    </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin_export_json') }}">Exportar JSON</a>
+    <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('admin_export_csv') }}">Exportar CSV</a>
   </div>
-
-  <!-- FILTROS -->
-  <form method="get" class="row g-3">
-    <div class="col-12 col-md-3">
-      <label class="section-label mb-1">Data (de)</label>
-      <input type="date" name="data_de" class="form-control" value="{{ filtros.data_de or '' }}">
-    </div>
-
-    <div class="col-12 col-md-3">
-      <label class="section-label mb-1">Data (até)</label>
-      <input type="date" name="data_ate" class="form-control" value="{{ filtros.data_ate or '' }}">
-    </div>
-
-    <div class="col-12 col-md-3">
-      <label class="section-label mb-1">Tipo</label>
-      <select name="tipo" class="form-select">
-        <option value="">Todos</option>
-        {% for t in tipos %}
-          <option value="{{ t }}" {% if filtros.tipo == t %}selected{% endif %}>{{ t }}</option>
-        {% endfor %}
-      </select>
-    </div>
-
-    <div class="col-12 col-md-3">
-      <label class="section-label mb-1">Viatura</label>
-      <input type="text" name="viatura" class="form-control" value="{{ filtros.viatura or '' }}" placeholder="ex: A-43">
-    </div>
-
-    <div class="col-12 col-md-3">
-      <label class="section-label mb-1">CCT</label>
-      <input type="text" name="cct" class="form-control" value="{{ filtros.cct or '' }}" placeholder="ex: 190497">
-    </div>
-
-    <div class="col-12 col-md-3">
-      <label class="section-label mb-1">PM</label>
-      <input type="text" name="pm" class="form-control" value="{{ filtros.pm or '' }}" placeholder="ex: 123456">
-    </div>
-
-    <div class="col-12 col-md-3">
-      <label class="section-label mb-1">Matrícula contém</label>
-      <input type="text" name="matricula" class="form-control" value="{{ filtros.matricula or '' }}" placeholder="ex: AA-12">
-    </div>
-
-    <div class="col-12 col-md-3 d-flex align-items-end">
-      <button type="submit" class="btn btn-guardar w-100">Aplicar filtros</button>
-    </div>
-  </form>
-
-  <hr class="my-4">
-
-  <!-- RESUMO -->
-  <div class="d-flex justify-content-between align-items-center mb-2">
-    <div class="text-muted">
-      Total: <strong>{{ total }}</strong> ocorrência(s)
-    </div>
-
-    {% if total > 0 %}
-      <a class="btn btn-success btn-sm"
-         href="{{ url_for('admin_export_csv', **filtros) }}">
-        Exportar CSV (filtrado)
-      </a>
-    {% endif %}
-  </div>
-
-  <!-- TABELA -->
-  {% if ocorrencias %}
-  <div class="table-responsive">
-    <table class="table table-sm align-middle">
-      <thead>
-        <tr>
-          <th>Data</th>
-          <th>Hora</th>
-          <th>Período</th>
-          <th>Viatura</th>
-          <th>CCT</th>
-          <th>PM</th>
-          <th>Tipo</th>
-          <th>Matrícula</th>
-          <th>Morada</th>
-          <th>Lat</th>
-          <th>Lon</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for o in ocorrencias %}
-        <tr>
-          <td>{{ o.data }}</td>
-          <td>{{ o.hora }}</td>
-          <td>{{ o.periodo }}</td>
-          <td>{{ o.viatura }}</td>
-          <td>{{ o.numero_ordem_cct }}</td>
-          <td>{{ o.numero_ordem_pm }}</td>
-          <td>{{ o.tipo_ocorrencia }}</td>
-          <td>{{ o.matricula }}</td>
-          <td style="min-width:260px;">{{ o.morada_completa }}</td>
-          <td>{{ o.latitude }}</td>
-          <td>{{ o.longitude }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-  {% else %}
-    <div class="alert alert-secondary mb-0">Não há dados para estes filtros.</div>
-  {% endif %}
 </div>
+
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-2">
+    <label class="form-label">Data (de)</label>
+    <input type="date" name="data_de" value="{{ filtros.data_de }}" class="form-control form-control-sm">
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Data (até)</label>
+    <input type="date" name="data_ate" value="{{ filtros.data_ate }}" class="form-control form-control-sm">
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Período</label>
+    <select name="periodo" class="form-select form-select-sm">
+      <option value="">Todos</option>
+      <option value="Manhã" {% if filtros.periodo=="Manhã" %}selected{% endif %}>Manhã</option>
+      <option value="Tarde" {% if filtros.periodo=="Tarde" %}selected{% endif %}>Tarde</option>
+    </select>
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Viatura</label>
+    <select name="viatura" class="form-select form-select-sm">
+      <option value="">Todas</option>
+      {% for v in viaturas %}
+        <option value="{{ v }}" {% if filtros.viatura==v %}selected{% endif %}>{{ v }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Tipo</label>
+    <select name="tipo" class="form-select form-select-sm">
+      <option value="">Todos</option>
+      {% for t in tipos %}
+        <option value="{{ t }}" {% if filtros.tipo==t %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">Matrícula</label>
+    <input type="text" name="matricula" value="{{ filtros.matricula }}" class="form-control form-control-sm" placeholder="ex: 12AB34">
+  </div>
+
+  <div class="col-md-2">
+    <label class="form-label">CCT</label>
+    <input type="text" name="cct" value="{{ filtros.cct }}" class="form-control form-control-sm">
+  </div>
+  <div class="col-md-2">
+    <label class="form-label">PM</label>
+    <input type="text" name="pm" value="{{ filtros.pm }}" class="form-control form-control-sm">
+  </div>
+  <div class="col-md-6">
+    <label class="form-label">Pesquisa livre</label>
+    <input type="text" name="q" value="{{ filtros.q }}" class="form-control form-control-sm" placeholder="morada, descrição, etc.">
+  </div>
+
+  <div class="col-md-2 d-grid">
+    <label class="form-label">&nbsp;</label>
+    <button class="btn btn-primary btn-sm">Filtrar</button>
+  </div>
+</form>
+
+<div class="table-responsive">
+  <table class="table table-sm table-striped align-middle">
+    <thead>
+      <tr>
+        <th>data</th>
+        <th>hora</th>
+        <th>periodo</th>
+        <th>viatura</th>
+        <th>numero_ordem_cct</th>
+        <th>numero_ordem_pm</th>
+        <th>tipo_ocorrencia</th>
+        <th>matricula</th>
+        <th>morada_completa</th>
+        <th>latitude</th>
+        <th>longitude</th>
+        <th>descricao</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in ocorrencias %}
+      <tr>
+        <td>{{ o.data }}</td>
+        <td>{{ o.hora }}</td>
+        <td>{{ o.periodo }}</td>
+        <td>{{ o.viatura }}</td>
+        <td>{{ o.numero_ordem_cct }}</td>
+        <td>{{ o.numero_ordem_pm }}</td>
+        <td>{{ o.tipo_ocorrencia }}</td>
+        <td>{{ o.matricula }}</td>
+        <td style="min-width:240px">{{ o.morada_completa }}</td>
+        <td>{{ o.latitude }}</td>
+        <td>{{ o.longitude }}</td>
+        <td style="min-width:240px">{{ o.descricao }}</td>
+        <td>
+          <a class="btn btn-link btn-sm p-0" href="{{ url_for('detalhe_ocorrencia', occ_id=o.id) }}">ver</a>
+        </td>
+      </tr>
+      {% endfor %}
+      {% if ocorrencias|length == 0 %}
+      <tr>
+        <td colspan="13" class="text-muted">Sem registos para os filtros selecionados.</td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
 {% endblock %}
