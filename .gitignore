@@ -1,0 +1,6 @@
+data/
+*.json
+*.txt
+*.docx
+__pycache__/
+.env

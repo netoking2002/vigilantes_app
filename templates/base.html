@@ -179,6 +179,28 @@
             margin-top:4px;
         }
 
+        /* Botão Administrador */
+        .btn-admin {
+            border-radius: 999px;
+            font-size: 14px;
+            padding: 8px 16px;
+            border: 1px solid #e5e7eb;
+            background: #ffffff;
+            color: #1f2937;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn-admin:hover {
+            background: #f9fafb;
+            border-color: #d1d5db;
+            color: #111827;
+        }
+
         @media (max-width: 768px) {
             .page-title-main {
                 font-size: 20px;
@@ -202,7 +224,11 @@
               <div class="brand-text-sub">Direção de Controlo de Tráfego</div>
           </div>
       </div>
-      <!-- Botão de acesso administrativo removido -->
+
+      <!-- ✅ Botão Administrador (canto superior direito) -->
+      <a href="{{ url_for('admin') }}" class="btn-admin">
+          Administrador
+      </a>
   </div>
 </header>
 
