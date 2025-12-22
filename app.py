@@ -39,35 +39,36 @@ def carregar_viaturas():
     return viaturas
 
 
+def _default_data():
+    return {
+        "registo_principal": {
+            "data": date.today().strftime("%d/%m/%Y"),
+            "periodo": "Manhã",
+            "viatura": "",
+            "num_ordem_cct": "",
+            "num_ordem_pm": "",
+            "registo_guardado": False,
+        },
+        "ocorrencias": []
+    }
+
+
 def carregar_dados():
     path = get_data_path()
     if not os.path.exists(path):
-        return {
-            "registo_principal": {
-                "data": date.today().strftime("%d/%m/%Y"),
-                "periodo": "Manhã",
-                "viatura": "",
-                "num_ordem_cct": "",
-                "num_ordem_pm": "",
-                "registo_guardado": False,
-            },
-            "ocorrencias": []
-        }
+        return _default_data()
+
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            dados = json.load(f)
+            # garante chaves mínimas
+            if "registo_principal" not in dados:
+                dados["registo_principal"] = _default_data()["registo_principal"]
+            if "ocorrencias" not in dados:
+                dados["ocorrencias"] = []
+            return dados
     except Exception:
-        return {
-            "registo_principal": {
-                "data": date.today().strftime("%d/%m/%Y"),
-                "periodo": "Manhã",
-                "viatura": "",
-                "num_ordem_cct": "",
-                "num_ordem_pm": "",
-                "registo_guardado": False,
-            },
-            "ocorrencias": []
-        }
+        return _default_data()
 
 
 def guardar_dados(dados):
@@ -94,8 +95,21 @@ def parse_ddmmyyyy(s):
         return None
 
 
+def parse_hhmm(s):
+    try:
+        return datetime.strptime(s, "%H:%M").time()
+    except Exception:
+        return None
+
+
 def contains(hay, needle):
     return needle.lower() in (hay or "").lower()
+
+
+def sort_key_ocorrencia(o):
+    d = parse_ddmmyyyy(o.get("data", "")) or date.min
+    t = parse_hhmm(o.get("hora", "")) or datetime.min.time()
+    return (d, t, o.get("id", 0))
 
 
 # =========================
@@ -107,16 +121,12 @@ def index():
     dados = carregar_dados()
     registo = dados["registo_principal"]
 
-    ocorrencias = sorted(
-        dados.get("ocorrencias", []),
-        key=lambda o: (o.get("data", ""), o.get("hora", "")),
-        reverse=False
-    )
+    ocorrencias = sorted(dados.get("ocorrencias", []), key=sort_key_ocorrencia)
 
     viaturas = carregar_viaturas()
 
     if request.method == "POST" and request.form.get("acao") == "guardar_registo":
-        data_form = request.form.get("data", "").strip()
+        data_form = request.form.get("data", "").strip()  # yyyy-mm-dd
         if data_form:
             try:
                 registo["data"] = datetime.strptime(data_form, "%Y-%m-%d").strftime("%d/%m/%Y")
@@ -194,15 +204,13 @@ def nova_ocorrencia():
     latitude = request.form.get("latitude", "").strip()
     longitude = request.form.get("longitude", "").strip()
 
-    # Obriga matrícula e morada
     if (not tipo or not data_ocorr or not hora_ocorr or not matricula or not morada):
         return redirect(url_for("index"))
 
-    # ✅ Guardar também os dados do registo principal na ocorrência
     ocorrencia = {
         "id": proximo_id_ocorrencia(dados),
 
-        # ordem pedida (a tabela no admin vai usar estes campos)
+        # ordem pedida
         "data": data_ocorr,
         "hora": hora_ocorr,
         "periodo": registo.get("periodo", ""),
@@ -219,6 +227,28 @@ def nova_ocorrencia():
     }
 
     dados["ocorrencias"].append(ocorrencia)
+    guardar_dados(dados)
+    return redirect(url_for("index"))
+
+
+# ✅ ESTAS 2 ROTAS FALTAVAM (e davam o teu BuildError no template)
+@app.route("/ocorrencias/<int:occ_id>")
+def detalhe_ocorrencia(occ_id):
+    dados = carregar_dados()
+    ocorrencias = dados.get("ocorrencias", [])
+    occ = next((o for o in ocorrencias if o.get("id") == occ_id), None)
+    if not occ:
+        return redirect(url_for("index"))
+
+    registo = dados["registo_principal"]
+    return render_template("detalhe_ocorrencia.html", ocorrencia=occ, registo=registo)
+
+
+@app.route("/ocorrencias/<int:occ_id>/apagar", methods=["POST"])
+def apagar_ocorrencia(occ_id):
+    dados = carregar_dados()
+    ocorrencias = dados.get("ocorrencias", [])
+    dados["ocorrencias"] = [o for o in ocorrencias if o.get("id") != occ_id]
     guardar_dados(dados)
     return redirect(url_for("index"))
 
@@ -274,18 +304,18 @@ def admin():
 
         if q:
             blob = " ".join([
-                str(o.get("data","")),
-                str(o.get("hora","")),
-                str(o.get("periodo","")),
-                str(o.get("viatura","")),
-                str(o.get("numero_ordem_cct","")),
-                str(o.get("numero_ordem_pm","")),
-                str(o.get("tipo_ocorrencia","")),
-                str(o.get("matricula","")),
-                str(o.get("morada_completa","")),
-                str(o.get("latitude","")),
-                str(o.get("longitude","")),
-                str(o.get("descricao","")),
+                str(o.get("data", "")),
+                str(o.get("hora", "")),
+                str(o.get("periodo", "")),
+                str(o.get("viatura", "")),
+                str(o.get("numero_ordem_cct", "")),
+                str(o.get("numero_ordem_pm", "")),
+                str(o.get("tipo_ocorrencia", "")),
+                str(o.get("matricula", "")),
+                str(o.get("morada_completa", "")),
+                str(o.get("latitude", "")),
+                str(o.get("longitude", "")),
+                str(o.get("descricao", "")),
             ])
             if not contains(blob, q):
                 ok = False
@@ -293,11 +323,11 @@ def admin():
         if ok:
             filtradas.append(o)
 
-    filtradas.sort(key=lambda x: (x.get("data", ""), x.get("hora", "")))
+    filtradas.sort(key=sort_key_ocorrencia)
 
     # listas para dropdown
-    tipos = sorted({o.get("tipo_ocorrencia","") for o in ocorrencias if o.get("tipo_ocorrencia")})
-    viaturas = sorted({o.get("viatura","") for o in ocorrencias if o.get("viatura")})
+    tipos = sorted({o.get("tipo_ocorrencia", "") for o in ocorrencias if o.get("tipo_ocorrencia")})
+    viaturas = sorted({o.get("viatura", "") for o in ocorrencias if o.get("viatura")})
 
     return render_template(
         "admin.html",
@@ -326,12 +356,12 @@ def fim_servico():
 
     output = io.StringIO()
     header = [
-        "data","hora","periodo","viatura","numero_ordem_cct","numero_ordem_pm",
-        "tipo_ocorrencia","matricula","morada_completa","latitude","longitude","descricao"
+        "data", "hora", "periodo", "viatura", "numero_ordem_cct", "numero_ordem_pm",
+        "tipo_ocorrencia", "matricula", "morada_completa", "latitude", "longitude", "descricao"
     ]
     output.write(";".join(header) + "\n")
 
-    for o in ocorrencias:
+    for o in sorted(ocorrencias, key=sort_key_ocorrencia):
         morada = (o.get("morada_completa", "") or "").replace("\n", " ").replace(";", ",")
         descricao = (o.get("descricao", "") or "").replace("\n", " ").replace(";", ",")
 
@@ -359,6 +389,7 @@ def fim_servico():
     cct = registo.get("num_ordem_cct", "")
     filename = f"Vigilantes_{nome_data}_{periodo}_{cct}.csv"
 
+    # limpar para novo serviço
     dados["registo_principal"]["registo_guardado"] = False
     dados["ocorrencias"] = []
     guardar_dados(dados)
@@ -371,4 +402,7 @@ def fim_servico():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # Render usa a variável PORT
+    port = int(os.environ.get("PORT", "5000"))
+    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=port, debug=debug)
