@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, Response, jsonify
+from flask import Flask, render_template, request, redirect, url_for, Response
 from datetime import datetime, date
 import os
 import json
@@ -21,6 +21,10 @@ def get_viaturas_path():
 
 
 def carregar_viaturas():
+    """
+    Lê a lista de viaturas do ficheiro data/viaturas.txt.
+    Uma viatura por linha. Se não existir, cria com alguns exemplos.
+    """
     path = get_viaturas_path()
 
     if not os.path.exists(path):
@@ -39,36 +43,42 @@ def carregar_viaturas():
     return viaturas
 
 
+def _estrutura_inicial():
+    return {
+        "registo_principal": {
+            "data": date.today().strftime("%d/%m/%Y"),
+            "periodo": "Manhã",
+            "viatura": "",
+            "num_ordem_cct": "",
+            "num_ordem_pm": "",
+            "registo_guardado": False,
+        },
+        "ocorrencias": [],
+        # ✅ NOVO: histórico persistente de todas as ocorrências (todas as sessões)
+        "historico_ocorrencias": []
+    }
+
+
 def carregar_dados():
     path = get_data_path()
     if not os.path.exists(path):
-        return {
-            "registo_principal": {
-                "data": date.today().strftime("%d/%m/%Y"),
-                "periodo": "Manhã",
-                "viatura": "",
-                "num_ordem_cct": "",
-                "num_ordem_pm": "",
-                "registo_guardado": False,
-            },
-            "ocorrencias": []
-        }
+        return _estrutura_inicial()
 
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            dados = json.load(f)
+
+        # ✅ garantir chaves novas mesmo em ficheiros antigos
+        if "historico_ocorrencias" not in dados:
+            dados["historico_ocorrencias"] = []
+        if "ocorrencias" not in dados:
+            dados["ocorrencias"] = []
+        if "registo_principal" not in dados:
+            dados["registo_principal"] = _estrutura_inicial()["registo_principal"]
+
+        return dados
     except Exception:
-        return {
-            "registo_principal": {
-                "data": date.today().strftime("%d/%m/%Y"),
-                "periodo": "Manhã",
-                "viatura": "",
-                "num_ordem_cct": "",
-                "num_ordem_pm": "",
-                "registo_guardado": False,
-            },
-            "ocorrencias": []
-        }
+        return _estrutura_inicial()
 
 
 def guardar_dados(dados):
@@ -78,25 +88,38 @@ def guardar_dados(dados):
 
 
 def proximo_id_ocorrencia(dados):
-    ocorrencias = dados.get("ocorrencias", [])
-    if not ocorrencias:
+    # ✅ id global com base em histórico + atuais
+    todos = (dados.get("historico_ocorrencias", []) or []) + (dados.get("ocorrencias", []) or [])
+    if not todos:
         return 1
-    return max(int(o.get("id", 0)) for o in ocorrencias) + 1
+    return max(o.get("id", 0) for o in todos) + 1
 
 
-# =========================
-#  HELPERS
-# =========================
+def obter_todas_ocorrencias(dados):
+    """
+    ✅ devolve TODAS as ocorrências (histórico + atuais) num formato uniforme
+    já com os campos pedidos (data/hora/período/viatura/números/...).
+    """
+    hist = dados.get("historico_ocorrencias", []) or []
+    atuais = dados.get("ocorrencias", []) or []
 
-def parse_ddmmyyyy(s):
-    try:
-        return datetime.strptime(s, "%d/%m/%Y").date()
-    except Exception:
-        return None
+    # garantir que as atuais também aparecem no admin
+    todas = hist + atuais
 
+    def chave_ordenacao(o):
+        # data dd/mm/yyyy + hora HH:MM
+        try:
+            d = datetime.strptime(o.get("data", ""), "%d/%m/%Y")
+        except Exception:
+            d = datetime.min
+        try:
+            h = datetime.strptime(o.get("hora", "00:00"), "%H:%M").time()
+        except Exception:
+            h = datetime.strptime("00:00", "%H:%M").time()
+        return (d, h)
 
-def contains(hay, needle):
-    return (needle or "").lower() in (hay or "").lower()
+    todas_ordenadas = sorted(todas, key=chave_ordenacao, reverse=True)
+    return todas_ordenadas
 
 
 # =========================
@@ -117,18 +140,24 @@ def index():
     viaturas = carregar_viaturas()
 
     if request.method == "POST" and request.form.get("acao") == "guardar_registo":
+        # === DATA: vem em formato yyyy-mm-dd do input type="date" ===
         data_form = request.form.get("data", "").strip()
         if data_form:
             try:
-                registo["data"] = datetime.strptime(data_form, "%Y-%m-%d").strftime("%d/%m/%Y")
+                registo["data"] = datetime.strptime(
+                    data_form, "%Y-%m-%d"
+                ).strftime("%d/%m/%Y")
             except ValueError:
                 pass
 
+        # Período
         registo["periodo"] = request.form.get("periodo", "Manhã")
 
+        # --- Tratamento especial da viatura / OUTRA ---
         viatura_escolhida = request.form.get("viatura", "").strip()
         outra_viatura = request.form.get("outra_viatura", "").strip()
 
+        # ✅ FIX: havia um bug "outra_viicula" (NameError). Corrigido.
         if viatura_escolhida == "OUTRA" and outra_viatura:
             registo["viatura"] = outra_viatura
         else:
@@ -142,8 +171,11 @@ def index():
         guardar_dados(dados)
         return redirect(url_for("index"))
 
+    # ==== Converter a data armazenada (dd/mm/aaaa) para yyyy-mm-dd para o input ====
     try:
-        data_iso = datetime.strptime(registo.get("data", ""), "%d/%m/%Y").strftime("%Y-%m-%d")
+        data_iso = datetime.strptime(
+            registo.get("data", ""), "%d/%m/%Y"
+        ).strftime("%Y-%m-%d")
     except Exception:
         data_iso = date.today().strftime("%Y-%m-%d")
 
@@ -157,7 +189,7 @@ def index():
             "Multas em corredor BUS",
             "Multas em áreas de paragem",
             "Multas a dificultar manobra",
-            "Multa - outras situações",
+            "Multa – outras situações",
             "Pedidos de reboque",
             "Pedidos de bloqueamento",
             "Advertências",
@@ -171,6 +203,7 @@ def nova_ocorrencia():
     dados = carregar_dados()
     registo = dados["registo_principal"]
 
+    # Só deixa criar ocorrências se o registo principal estiver guardado
     if not registo.get("registo_guardado"):
         return redirect(url_for("index"))
 
@@ -186,6 +219,7 @@ def nova_ocorrencia():
             hora_ocorr=hora_str
         )
 
+    # POST – guardar ocorrência
     tipo = request.form.get("tipo")
     matricula = request.form.get("matricula", "").upper().strip()
     descricao = request.form.get("descricao", "").strip()
@@ -195,23 +229,32 @@ def nova_ocorrencia():
     latitude = request.form.get("latitude", "").strip()
     longitude = request.form.get("longitude", "").strip()
 
-    if (not tipo or not data_ocorr or not hora_ocorr or not matricula or not morada):
+    # Validações básicas
+    if (
+        not tipo
+        or not data_ocorr
+        or not hora_ocorr
+        or not matricula
+        or not morada
+    ):
         return redirect(url_for("index"))
 
+    # ✅ NOVO: guardar também os dados do registo principal DENTRO da ocorrência
+    # para o admin ter todos os campos (mesmo depois do fim_servico/reset).
     ocorrencia = {
         "id": proximo_id_ocorrencia(dados),
 
-        # ordem pedida
         "data": data_ocorr,
         "hora": hora_ocorr,
+
         "periodo": registo.get("periodo", ""),
         "viatura": registo.get("viatura", ""),
         "numero_ordem_cct": registo.get("num_ordem_cct", ""),
         "numero_ordem_pm": registo.get("num_ordem_pm", ""),
 
-        "tipo_ocorrencia": tipo,
+        "tipo": tipo,
         "matricula": matricula,
-        "morada_completa": morada,
+        "morada": morada,
         "latitude": latitude,
         "longitude": longitude,
         "descricao": descricao,
@@ -226,151 +269,31 @@ def nova_ocorrencia():
 def detalhe_ocorrencia(occ_id):
     dados = carregar_dados()
     ocorrencias = dados.get("ocorrencias", [])
-    occ = next((o for o in ocorrencias if int(o.get("id", 0)) == occ_id), None)
+    occ = next((o for o in ocorrencias if o.get("id") == occ_id), None)
     if not occ:
         return redirect(url_for("index"))
-    return render_template("detalhe_ocorrencia.html", ocorrencia=occ)
+    registo = dados["registo_principal"]
+    return render_template("detalhe_ocorrencia.html", ocorrencia=occ, registo=registo)
 
 
-@app.route("/admin", methods=["GET"])
-def admin():
+@app.route("/ocorrencias/<int:occ_id>/apagar", methods=["POST"])
+def apagar_ocorrencia(occ_id):
     dados = carregar_dados()
     ocorrencias = dados.get("ocorrencias", [])
-
-    data_de = request.args.get("data_de", "").strip()     # yyyy-mm-dd
-    data_ate = request.args.get("data_ate", "").strip()   # yyyy-mm-dd
-    periodo = request.args.get("periodo", "").strip()
-    viatura = request.args.get("viatura", "").strip()
-    cct = request.args.get("cct", "").strip()
-    pm = request.args.get("pm", "").strip()
-    tipo = request.args.get("tipo", "").strip()
-    matricula = request.args.get("matricula", "").strip()
-    q = request.args.get("q", "").strip()
-
-    d_de = None
-    d_ate = None
-    try:
-        if data_de:
-            d_de = datetime.strptime(data_de, "%Y-%m-%d").date()
-        if data_ate:
-            d_ate = datetime.strptime(data_ate, "%Y-%m-%d").date()
-    except Exception:
-        d_de, d_ate = None, None
-
-    filtradas = []
-    for o in ocorrencias:
-        ok = True
-
-        d_o = parse_ddmmyyyy(o.get("data", ""))
-        if d_de and (not d_o or d_o < d_de):
-            ok = False
-        if d_ate and (not d_o or d_o > d_ate):
-            ok = False
-
-        if periodo and o.get("periodo") != periodo:
-            ok = False
-        if viatura and o.get("viatura") != viatura:
-            ok = False
-        if cct and o.get("numero_ordem_cct") != cct:
-            ok = False
-        if pm and o.get("numero_ordem_pm") != pm:
-            ok = False
-        if tipo and o.get("tipo_ocorrencia") != tipo:
-            ok = False
-        if matricula and not contains(o.get("matricula", ""), matricula):
-            ok = False
-
-        if q:
-            blob = " ".join([
-                str(o.get("data","")),
-                str(o.get("hora","")),
-                str(o.get("periodo","")),
-                str(o.get("viatura","")),
-                str(o.get("numero_ordem_cct","")),
-                str(o.get("numero_ordem_pm","")),
-                str(o.get("tipo_ocorrencia","")),
-                str(o.get("matricula","")),
-                str(o.get("morada_completa","")),
-                str(o.get("latitude","")),
-                str(o.get("longitude","")),
-                str(o.get("descricao","")),
-            ])
-            if not contains(blob, q):
-                ok = False
-
-        if ok:
-            filtradas.append(o)
-
-    filtradas.sort(key=lambda x: (x.get("data", ""), x.get("hora", "")))
-
-    tipos = sorted({o.get("tipo_ocorrencia","") for o in ocorrencias if o.get("tipo_ocorrencia")})
-    viaturas = sorted({o.get("viatura","") for o in ocorrencias if o.get("viatura")})
-
-    return render_template(
-        "admin.html",
-        ocorrencias=filtradas,
-        tipos=tipos,
-        viaturas=viaturas,
-        filtros={
-            "data_de": data_de,
-            "data_ate": data_ate,
-            "periodo": periodo,
-            "viatura": viatura,
-            "cct": cct,
-            "pm": pm,
-            "tipo": tipo,
-            "matricula": matricula,
-            "q": q,
-        }
-    )
+    ocorrencias = [o for o in ocorrencias if o.get("id") != occ_id]
+    dados["ocorrencias"] = ocorrencias
+    guardar_dados(dados)
+    return redirect(url_for("index"))
 
 
-@app.route("/admin/export/json", methods=["GET"])
-def admin_export_json():
+# =========================
+#  ✅ ADMIN - LISTA COMPLETA COM FILTROS
+# =========================
+@app.route("/admin/ocorrencias")
+def admin_ocorrencias():
     dados = carregar_dados()
-    return jsonify(dados.get("ocorrencias", []))
-
-
-@app.route("/admin/export/csv", methods=["GET"])
-def admin_export_csv():
-    dados = carregar_dados()
-    ocorrencias = dados.get("ocorrencias", [])
-
-    output = io.StringIO()
-    header = [
-        "data","hora","periodo","viatura","numero_ordem_cct","numero_ordem_pm",
-        "tipo_ocorrencia","matricula","morada_completa","latitude","longitude","descricao"
-    ]
-    output.write(";".join(header) + "\n")
-
-    for o in ocorrencias:
-        morada = (o.get("morada_completa", "") or "").replace("\n", " ").replace(";", ",")
-        descricao = (o.get("descricao", "") or "").replace("\n", " ").replace(";", ",")
-        linha = [
-            o.get("data", ""),
-            o.get("hora", ""),
-            o.get("periodo", ""),
-            o.get("viatura", ""),
-            o.get("numero_ordem_cct", ""),
-            o.get("numero_ordem_pm", ""),
-            o.get("tipo_ocorrencia", ""),
-            o.get("matricula", ""),
-            morada,
-            o.get("latitude", ""),
-            o.get("longitude", ""),
-            descricao,
-        ]
-        output.write(";".join(linha) + "\n")
-
-    csv_data = output.getvalue()
-    output.close()
-
-    filename = f"Vigilantes_Admin_{date.today().strftime('%Y-%m-%d')}.csv"
-    return Response(
-        csv_data.encode("utf-8-sig"),
-        mimetype="text/csv; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-    )
+    todas = obter_todas_ocorrencias(dados)
+    return render_template("admin_ocorrencias.html", ocorrencias=todas)
 
 
 @app.route("/fim_servico", methods=["POST"])
@@ -379,24 +302,29 @@ def fim_servico():
     registo = dados["registo_principal"]
     ocorrencias = dados.get("ocorrencias", [])
 
+    # Gerar CSV em memória
     output = io.StringIO()
+
     header = [
-        "data","hora","periodo","viatura","numero_ordem_cct","numero_ordem_pm",
-        "tipo_ocorrencia","matricula","morada_completa","latitude","longitude","descricao"
+        "data", "hora", "periodo", "viatura", "numero_ordem_cct",
+        "numero_ordem_pm", "tipo_ocorrencia", "matricula",
+        "morada_completa", "latitude", "longitude", "descricao"
     ]
     output.write(";".join(header) + "\n")
 
     for o in ocorrencias:
-        morada = (o.get("morada_completa", "") or "").replace("\n", " ").replace(";", ",")
+        morada = (o.get("morada", "") or "").replace("\n", " ").replace(";", ",")
         descricao = (o.get("descricao", "") or "").replace("\n", " ").replace(";", ",")
+
+        # ✅ usar campos guardados na ocorrência (se existirem) para ser consistente
         linha = [
-            o.get("data", ""),
+            o.get("data", registo.get("data", "")),
             o.get("hora", ""),
-            o.get("periodo", ""),
-            o.get("viatura", ""),
-            o.get("numero_ordem_cct", ""),
-            o.get("numero_ordem_pm", ""),
-            o.get("tipo_ocorrencia", ""),
+            o.get("periodo", registo.get("periodo", "")),
+            o.get("viatura", registo.get("viatura", "")),
+            o.get("numero_ordem_cct", registo.get("num_ordem_cct", "")),
+            o.get("numero_ordem_pm", registo.get("num_ordem_pm", "")),
+            o.get("tipo", ""),
             o.get("matricula", ""),
             morada,
             o.get("latitude", ""),
@@ -408,11 +336,17 @@ def fim_servico():
     csv_data = output.getvalue()
     output.close()
 
+    # Criar nome do ficheiro conforme pedido
     nome_data = registo.get("data", "").replace("/", "-")
     periodo = registo.get("periodo", "")
     cct = registo.get("num_ordem_cct", "")
     filename = f"Vigilantes_{nome_data}_{periodo}_{cct}.csv"
 
+    # ✅ NOVO: antes de limpar, mover as ocorrências atuais para o histórico
+    if ocorrencias:
+        dados["historico_ocorrencias"].extend(ocorrencias)
+
+    # Limpar registos para novo serviço
     dados["registo_principal"]["registo_guardado"] = False
     dados["ocorrencias"] = []
     guardar_dados(dados)
