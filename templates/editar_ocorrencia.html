@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Editar ocorrência{% endblock %}
+
+{% block content %}
+
+<div class="card mb-3">
+  <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <div>
+      <h5 class="mb-1">Editar ocorrência</h5>
+      <div class="text-muted small">
+        ID: {{ ocorrencia.id }} · {{ ocorrencia.data }} {{ ocorrencia.hora }} · {{ ocorrencia.tipo }}
+      </div>
+    </div>
+
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('detalhe_ocorrencia', occ_id=ocorrencia.id) }}" class="btn btn-sm btn-secondary">Voltar</a>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="max-width: 980px;">
+  <div class="card-body">
+
+    <form method="post" action="{{ url_for('editar_ocorrencia_user', occ_id=ocorrencia.id) }}" class="row g-3">
+
+      <!-- Só leitura (contexto) -->
+      <div class="col-md-3">
+        <label class="section-label mb-1">Data</label>
+        <input type="text" class="form-control" value="{{ ocorrencia.data or '' }}" readonly>
+      </div>
+
+      <div class="col-md-3">
+        <label class="section-label mb-1">Hora</label>
+        <input type="text" class="form-control" value="{{ ocorrencia.hora or '' }}" readonly>
+      </div>
+
+      <div class="col-md-3">
+        <label class="section-label mb-1">Período</label>
+        <input type="text" class="form-control" value="{{ ocorrencia.periodo or '' }}" readonly>
+      </div>
+
+      <div class="col-md-3">
+        <label class="section-label mb-1">Viatura</label>
+        <input type="text" class="form-control" value="{{ ocorrencia.viatura or '' }}" readonly>
+      </div>
+
+      <div class="col-md-4">
+        <label class="section-label mb-1">Nº Ordem CCT</label>
+        <input type="text" class="form-control" value="{{ ocorrencia.numero_ordem_cct or '' }}" readonly>
+      </div>
+
+      <div class="col-md-4">
+        <label class="section-label mb-1">Nº Ordem PM</label>
+        <input type="text" class="form-control" value="{{ ocorrencia.numero_ordem_pm or '' }}" readonly>
+      </div>
+
+      <div class="col-md-4">
+        <label class="section-label mb-1">Tipo</label>
+        <input type="text" class="form-control" value="{{ ocorrencia.tipo or '' }}" readonly>
+      </div>
+
+      <hr class="my-2">
+
+      <!-- ✅ EDITÁVEL PELO USER (apenas o que pediste) -->
+      <div class="col-md-4">
+        <label class="section-label mb-1">Matrícula</label>
+        <input type="text"
+               name="matricula"
+               class="form-control"
+               value="{{ ocorrencia.matricula or '' }}"
+               placeholder="XX-XX-XX"
+               maxlength="30">
+        <small class="text-muted">Permitido alterar matrícula.</small>
+      </div>
+
+      <div class="col-md-8">
+        <label class="section-label mb-1">Morada</label>
+        <input type="text"
+               name="morada"
+               class="form-control"
+               value="{{ ocorrencia.morada or '' }}"
+               placeholder="Morada completa">
+        <small class="text-muted">Permitido alterar morada.</small>
+      </div>
+
+      <div class="col-md-4">
+        <label class="section-label mb-1">Latitude</label>
+        <input type="text"
+               name="latitude"
+               class="form-control"
+               value="{{ ocorrencia.latitude or '' }}"
+               placeholder="ex: 38.722252">
+      </div>
+
+      <div class="col-md-4">
+        <label class="section-label mb-1">Longitude</label>
+        <input type="text"
+               name="longitude"
+               class="form-control"
+               value="{{ ocorrencia.longitude or '' }}"
+               placeholder="ex: -9.139337">
+      </div>
+
+      <div class="col-12">
+        <label class="section-label mb-1">Descrição</label>
+        <textarea class="form-control" rows="4" readonly>{{ ocorrencia.descricao or '' }}</textarea>
+        <small class="text-muted">A descrição não é editável por utilizadores.</small>
+      </div>
+
+      <div class="col-12 d-flex justify-content-between mt-2">
+        <a href="{{ url_for('detalhe_ocorrencia', occ_id=ocorrencia.id) }}" class="btn btn-outline-secondary">
+          Cancelar
+        </a>
+        <button type="submit" class="btn btn-primary">
+          Guardar alterações
+        </button>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+{% endblock %}

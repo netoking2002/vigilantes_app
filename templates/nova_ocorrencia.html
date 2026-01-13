@@ -1,227 +1,376 @@
 {% extends "base.html" %}
-
-{% block title %}Nova Ocorrência – {{ tipo }}{% endblock %}
+{% block title %}Nova Ocorrência{% endblock %}
 
 {% block content %}
 
-<div class="main-form-card mb-4">
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="main-form-title">
-                Nova Ocorrência – {{ tipo }}
-            </div>
-        </div>
-    </div>
+<div class="card main-form-card">
+  <div class="card-body">
+
+    <h5 class="mb-3">Nova ocorrência</h5>
 
     <form method="post" class="row g-3" onsubmit="return validarOcorrencia();">
-        <input type="hidden" name="tipo" value="{{ tipo }}">
+      <input type="hidden" name="tipo" id="tipoOcorrencia" value="{{ tipo }}">
 
-        <div class="col-12 col-md-6">
-            <label class="section-label mb-1">Matrícula</label>
-            <input type="text"
-                   id="matricula"
-                   name="matricula"
-                   class="form-control"
-                   placeholder="XX-XX-XX"
-                   required>
+      <div class="col-12 col-md-6">
+        <label class="section-label mb-1">Data ocorrência</label>
+        <input type="text" name="data_ocorr" class="form-control" value="{{ data_ocorr }}" readonly>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="section-label mb-1">Hora ocorrência</label>
+        <input type="text" name="hora_ocorr" class="form-control" value="{{ hora_ocorr }}" readonly>
+      </div>
+
+      {# ========= MATRÍCULA(S) ========= #}
+      {% if system_settings.enable_multi_matricula %}
+      <div class="col-12 col-md-8" id="wrapMatriculas">
+        <div class="d-flex justify-content-between align-items-center">
+          <label class="section-label mb-1">Matrículas</label>
+
+          <button type="button" class="btn btn-sm btn-outline-primary" id="btnAddMatricula">
+            + Adicionar
+          </button>
         </div>
 
-        <div class="col-12 col-md-6 d-flex align-items-end">
-            <div class="form-check ms-md-2">
-                <input class="form-check-input" type="checkbox" id="chkEstrangeira">
-                <label class="form-check-label" for="chkEstrangeira">
-                    Matrícula estrangeira
-                </label>
+        <div id="matriculasContainer" class="mt-1 d-grid gap-2">
+          <div class="matricula-row d-flex gap-2 align-items-start">
+            <div class="flex-grow-1">
+              <input type="text"
+                     name="matriculas[]"
+                     class="form-control matricula-input"
+                     placeholder="XX-XX-XX"
+                     pattern="[A-Za-z0-9]{2}-[A-Za-z0-9]{2}-[A-Za-z0-9]{2}"
+                     maxlength="8">
+              <div class="form-check mt-2">
+                <input class="form-check-input matricula-estrangeira" type="checkbox">
+                <label class="form-check-label">Matrícula estrangeira</label>
+              </div>
             </div>
-        </div>
 
-        <div class="col-12 col-md-6">
-            <label class="section-label mb-1">Data da ocorrência</label>
-            <input type="text"
-                   name="data_ocorr"
-                   class="form-control"
-                   value="{{ data_ocorr }}"
-                   readonly>
-        </div>
-
-        <div class="col-12 col-md-6">
-            <label class="section-label mb-1">Hora da ocorrência</label>
-            <input type="text"
-                   name="hora_ocorr"
-                   class="form-control"
-                   value="{{ hora_ocorr }}"
-                   readonly>
-        </div>
-
-        <div class="col-12 col-md-8">
-            <label class="section-label mb-1">Morada completa</label>
-            <input type="text"
-                   name="morada"
-                   id="moradaCompleta"
-                   class="form-control"
-                   placeholder="Morada completa (pode ser preenchida automaticamente ou à mão)"
-                   required>
-        </div>
-
-        <div class="col-12 col-md-4">
-            <label class="section-label mb-1">Localização (GPS)</label>
             <button type="button"
-                    id="btnLocalizacao"
-                    class="btn btn-outline-primary w-100"
-                    onclick="obterLocalizacao()">
-                Obter localização
-            </button>
-            <small id="gpsStatus" class="text-muted d-block mt-1">
-                Latitude / Longitude ainda não obtidas.
-            </small>
+                    class="btn btn-outline-danger btn-sm btnRemoveMatricula"
+                    title="Remover"
+                    style="margin-top:2px;"
+                    disabled>✕</button>
+          </div>
         </div>
 
-        <div class="col-12">
-            <label class="section-label mb-1">Descrição</label>
-            <textarea name="descricao" class="form-control" rows="4" placeholder="Descrição (opcional)"></textarea>
+        <small class="text-muted d-block mt-1">
+          Ao guardar, será criada 1 ocorrência por cada matrícula preenchida.
+        </small>
+      </div>
+      {% else %}
+      <div class="col-12 col-md-8">
+        <label class="section-label mb-1">Matrícula</label>
+        <input type="text"
+               name="matricula"
+               id="matriculaUnica"
+               class="form-control"
+               placeholder="XX-XX-XX"
+               pattern="[A-Za-z0-9]{2}-[A-Za-z0-9]{2}-[A-Za-z0-9]{2}"
+               maxlength="8">
+        <div class="form-check mt-2">
+          <input class="form-check-input" type="checkbox" ids="matriculaUnicaEstrangeira" id="matriculaUnicaEstrangeira">
+          <label class="form-check-label" for="matriculaUnicaEstrangeira">Matrícula estrangeira</label>
         </div>
+      </div>
+      {% endif %}
 
-        <input type="hidden" name="latitude"  id="latitude">
-        <input type="hidden" name="longitude" id="longitude">
+      <div class="col-12 col-md-4">
+        <label class="section-label mb-1">Tipo</label>
+        <input type="text" class="form-control" value="{{ tipo }}" readonly>
+      </div>
 
-        <div class="col-12 d-flex justify-content-between mt-3">
-            <a href="{{ url_for('index') }}" class="btn btn-secondary">
-                Cancelar
-            </a>
-            <button type="submit" class="btn btn-success">
-                Guardar ocorrência
-            </button>
-        </div>
+      <div class="col-12 col-md-8" id="wrapMorada">
+        <label class="section-label mb-1">Morada completa</label>
+        <input type="text"
+               name="morada"
+               id="moradaCompleta"
+               class="form-control"
+               placeholder="Morada completa (pode ser preenchida automaticamente ou à mão)">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="section-label mb-1">Localização (GPS)</label>
+        <button type="button"
+                id="btnLocalizacao"
+                class="btn btn-outline-primary w-100"
+                onclick="obterLocalizacao()">
+          Obter localização
+        </button>
+        <small id="gpsStatus" class="text-muted d-block mt-1">
+          Latitude / Longitude ainda não obtidas.
+        </small>
+      </div>
+
+      <div class="col-12">
+        <label class="section-label mb-1">Descrição</label>
+        <textarea name="descricao"
+                  id="descricao"
+                  class="form-control"
+                  rows="4"
+                  placeholder="Descrição"></textarea>
+        <small class="text-muted" id="hintDescricao"></small>
+      </div>
+
+      <input type="hidden" name="latitude" id="latitude">
+      <input type="hidden" name="longitude" id="longitude">
+
+      <div class="col-12 d-flex justify-content-between mt-3">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-success">Guardar ocorrência</button>
+      </div>
 
     </form>
+  </div>
 </div>
 
 <script>
-    const inputMatricula = document.getElementById('matricula');
-    const chkEstrangeira = document.getElementById('chkEstrangeira');
+  const isMulti = {{ 'true' if system_settings.enable_multi_matricula else 'false' }};
 
-    function aplicarMascaraMatricula() {
-        if (chkEstrangeira.checked) {
-            inputMatricula.removeAttribute("pattern");
-            inputMatricula.maxLength = 30;
-            inputMatricula.placeholder = 'Matrícula estrangeira';
-        } else {
-            inputMatricula.setAttribute(
-                "pattern",
-                "[A-Za-z0-9]{2}-[A-Za-z0-9]{2}-[A-Za-z0-9]{2}"
-            );
-            inputMatricula.maxLength = 8;
-            inputMatricula.placeholder = 'XX-XX-XX';
-        }
+  function aplicarMascaraMatricula(input, chk) {
+    if (chk.checked) {
+      input.removeAttribute("pattern");
+      input.maxLength = 30;
+      input.placeholder = "Matrícula estrangeira";
+    } else {
+      input.setAttribute("pattern", "[A-Za-z0-9]{2}-[A-Za-z0-9]{2}-[A-Za-z0-9]{2}");
+      input.maxLength = 8;
+      input.placeholder = "XX-XX-XX";
+    }
+  }
+
+  function formatarMatriculaPT(input) {
+    let v = (input.value || "").toUpperCase();
+    v = v.replace(/[^A-Z0-9]/g, "");
+    if (v.length > 6) v = v.slice(0, 6);
+    const partes = [];
+    for (let i = 0; i < v.length; i += 2) partes.push(v.slice(i, i + 2));
+    input.value = partes.join("-");
+  }
+
+  function aplicarRegrasPorTipo() {
+    const tipo = document.getElementById("tipoOcorrencia").value;
+    const morada = document.getElementById("moradaCompleta");
+    const descricao = document.getElementById("descricao");
+    const hintDescricao = document.getElementById("hintDescricao");
+
+    if (tipo === "Observações gerais") {
+      morada.required = false;
+      descricao.required = true;
+      hintDescricao.textContent = "Na ocorrência 'Observações gerais', a descrição é obrigatória.";
+    } else {
+      morada.required = true;
+      descricao.required = false;
+      hintDescricao.textContent = "Descrição opcional (exceto em 'Observações gerais').";
     }
 
-    inputMatricula.addEventListener('input', function () {
-        if (chkEstrangeira.checked) return;
+    if (isMulti) {
+      const inputs = Array.from(document.querySelectorAll(".matricula-input"));
+      inputs.forEach((inp, i) => inp.required = (tipo !== "Observações gerais" && i === 0));
+    } else {
+      const inp = document.getElementById("matriculaUnica");
+      if (inp) inp.required = (tipo !== "Observações gerais");
+    }
+  }
 
-        let v = inputMatricula.value.toUpperCase();
-        v = v.replace(/[^A-Z0-9]/g, '');
-        if (v.length > 6) v = v.slice(0, 6);
+  // MULTI
+  function bindRow(row) {
+    const input = row.querySelector(".matricula-input");
+    const chk = row.querySelector(".matricula-estrangeira");
+    const btnRemove = row.querySelector(".btnRemoveMatricula");
 
-        const partes = [];
-        for (let i = 0; i < v.length; i += 2) {
-            partes.push(v.slice(i, i + 2));
-        }
-        inputMatricula.value = partes.join('-');
+    aplicarMascaraMatricula(input, chk);
+
+    input.addEventListener("input", function () {
+      if (chk.checked) return;
+      formatarMatriculaPT(input);
     });
 
-    chkEstrangeira.addEventListener('change', aplicarMascaraMatricula);
-    window.addEventListener('load', aplicarMascaraMatricula);
+    chk.addEventListener("change", function () {
+      aplicarMascaraMatricula(input, chk);
+      if (!chk.checked) formatarMatriculaPT(input);
+    });
 
-    function obterLocalizacao() {
-        const btn = document.getElementById('btnLocalizacao');
-        const status = document.getElementById('gpsStatus');
-        const latInput = document.getElementById('latitude');
-        const lonInput = document.getElementById('longitude');
-        const morada = document.getElementById('moradaCompleta');
+    btnRemove.addEventListener("click", function () {
+      row.remove();
+      atualizarBotoesRemover();
+      aplicarRegrasPorTipo();
+    });
+  }
 
-        if (!navigator.geolocation) {
-            status.textContent = 'Geolocalização não suportada neste dispositivo.';
-            return;
-        }
+  function atualizarBotoesRemover() {
+    const container = document.getElementById("matriculasContainer");
+    if (!container) return;
+    const rows = Array.from(container.querySelectorAll(".matricula-row"));
+    rows.forEach(r => {
+      const btn = r.querySelector(".btnRemoveMatricula");
+      btn.disabled = rows.length === 1;
+    });
+  }
 
-        btn.disabled = true;
-        status.textContent = 'A obter localização.';
+  function adicionarLinhaMatricula() {
+    const container = document.getElementById("matriculasContainer");
+    if (!container) return;
 
-        navigator.geolocation.getCurrentPosition(
-            async (pos) => {
-                const lat = pos.coords.latitude.toFixed(6);
-                const lon = pos.coords.longitude.toFixed(6);
+    const row = document.createElement("div");
+    row.className = "matricula-row d-flex gap-2 align-items-start";
+    row.innerHTML = `
+      <div class="flex-grow-1">
+        <input type="text"
+               name="matriculas[]"
+               class="form-control matricula-input"
+               placeholder="XX-XX-XX"
+               pattern="[A-Za-z0-9]{2}-[A-Za-z0-9]{2}-[A-Za-z0-9]{2}"
+               maxlength="8">
+        <div class="form-check mt-2">
+          <input class="form-check-input matricula-estrangeira" type="checkbox">
+          <label class="form-check-label">Matrícula estrangeira</label>
+        </div>
+      </div>
 
-                latInput.value = lat;
-                lonInput.value = lon;
-                status.textContent = `Latitude: ${lat} | Longitude: ${lon}`;
+      <button type="button"
+              class="btn btn-outline-danger btn-sm btnRemoveMatricula"
+              title="Remover"
+              style="margin-top:2px;">✕</button>
+    `;
+    container.appendChild(row);
+    bindRow(row);
+    atualizarBotoesRemover();
+    aplicarRegrasPorTipo();
+  }
 
-                try {
-                    const resp = await fetch(
-                        'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' +
-                        encodeURIComponent(lat) +
-                        '&lon=' + encodeURIComponent(lon)
-                    );
+  // SINGLE
+  function bindSingle() {
+    const input = document.getElementById("matriculaUnica");
+    const chk = document.getElementById("matriculaUnicaEstrangeira");
+    if (!input || !chk) return;
 
-                    if (resp.ok) {
-                        const dados = await resp.json();
+    aplicarMascaraMatricula(input, chk);
 
-                        let moradaCurta = "";
-                        if (dados.address) {
-                            const addr = dados.address;
-                            let rua = addr.road
-                                       || addr.pedestrian
-                                       || addr.residential
-                                       || addr.footway
-                                       || addr.path
-                                       || addr.cycleway
-                                       || addr.street
-                                       || addr.neighbourhood
-                                       || addr.suburb
-                                       || addr.village
-                                       || addr.town
-                                       || addr.city
-                                       || addr.name;
+    input.addEventListener("input", function () {
+      if (chk.checked) return;
+      formatarMatriculaPT(input);
+    });
 
-                            const numero = addr.house_number || "";
+    chk.addEventListener("change", function () {
+      aplicarMascaraMatricula(input, chk);
+      if (!chk.checked) formatarMatriculaPT(input);
+    });
+  }
 
-                            if (rua) {
-                                moradaCurta = numero ? `${rua} ${numero}` : rua;
-                            }
-                        }
-                        if (!moradaCurta && dados.display_name) {
-                            moradaCurta = dados.display_name;
-                        }
+  function obterLocalizacao() {
+    const btn = document.getElementById('btnLocalizacao');
+    const status = document.getElementById('gpsStatus');
+    const latInput = document.getElementById('latitude');
+    const lonInput = document.getElementById('longitude');
+    const morada = document.getElementById('moradaCompleta');
 
-                        if (moradaCurta && !morada.value) {
-                            morada.value = moradaCurta;
-                        }
-                    }
-                } catch (e) {
-                    console.error(e);
-                } finally {
-                    btn.disabled = false;
-                }
-            },
-            (erro) => {
-                console.error(erro);
-                status.textContent = 'Não foi possível obter a localização.';
-                btn.disabled = false;
-            },
-            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-        );
+    if (!navigator.geolocation) {
+      status.textContent = 'Geolocalização não suportada neste dispositivo.';
+      return;
     }
 
-    function validarOcorrencia() {
-        const matricula = inputMatricula.value.trim();
-        const morada = document.getElementById('moradaCompleta').value.trim();
+    btn.disabled = true;
+    status.textContent = 'A obter localização...';
 
-        if (!matricula || !morada) {
-            alert("Preenche a Matrícula e a Morada completa antes de guardar a ocorrência.");
-            return false;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude.toFixed(6);
+        const lon = pos.coords.longitude.toFixed(6);
+
+        latInput.value = lat;
+        lonInput.value = lon;
+        status.textContent = `Latitude: ${lat} | Longitude: ${lon}`;
+
+        try {
+          const resp = await fetch(
+            'https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=' +
+            encodeURIComponent(lat) + '&lon=' + encodeURIComponent(lon)
+          );
+
+          if (resp.ok) {
+            const dados = await resp.json();
+            let moradaCurta = "";
+
+            if (dados.address) {
+              const addr = dados.address;
+              let rua = addr.road || addr.pedestrian || addr.residential || addr.footway ||
+                        addr.path || addr.cycleway || addr.street || addr.neighbourhood ||
+                        addr.suburb || addr.village || addr.town || addr.city || addr.name;
+              const numero = addr.house_number || "";
+              if (rua) moradaCurta = numero ? `${rua} ${numero}` : rua;
+            }
+
+            if (!moradaCurta && dados.display_name) moradaCurta = dados.display_name;
+            if (moradaCurta && !morada.value) morada.value = moradaCurta;
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          btn.disabled = false;
         }
-        return true;
+      },
+      (erro) => {
+        console.error(erro);
+        status.textContent = 'Não foi possível obter a localização.';
+        btn.disabled = false;
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }
+
+  function validarOcorrencia() {
+    const tipo = document.getElementById("tipoOcorrencia").value;
+    const morada = document.getElementById('moradaCompleta').value.trim();
+    const descricao = document.getElementById('descricao').value.trim();
+
+    if (tipo === "Observações gerais") {
+      if (!descricao) {
+        alert("Na ocorrência 'Observações gerais', a descrição é obrigatória.");
+        return false;
+      }
+      return true;
     }
+
+    if (!morada) {
+      alert("Preenche a Morada completa antes de guardar a ocorrência.");
+      return false;
+    }
+
+    if (isMulti) {
+      const matriculas = Array.from(document.querySelectorAll(".matricula-input"))
+        .map(i => (i.value || "").trim())
+        .filter(v => v.length > 0);
+
+      if (matriculas.length === 0) {
+        alert("Indica pelo menos 1 Matrícula antes de guardar a ocorrência.");
+        return false;
+      }
+      return true;
+    } else {
+      const m = (document.getElementById("matriculaUnica")?.value || "").trim();
+      if (!m) {
+        alert("Indica a Matrícula antes de guardar a ocorrência.");
+        return false;
+      }
+      return true;
+    }
+  }
+
+  window.addEventListener("load", function () {
+    aplicarRegrasPorTipo();
+
+    if (isMulti) {
+      const btnAdd = document.getElementById("btnAddMatricula");
+      const firstRow = document.querySelector(".matricula-row");
+      if (firstRow) bindRow(firstRow);
+      atualizarBotoesRemover();
+      if (btnAdd) btnAdd.addEventListener("click", adicionarLinhaMatricula);
+    } else {
+      bindSingle();
+    }
+  });
 </script>
 
 {% endblock %}

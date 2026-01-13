@@ -1,49 +1,122 @@
 {% extends "base.html" %}
-
-{% block title %}Administrador - Todas as Ocorrências{% endblock %}
+{% block title %}Admin - Ocorrências{% endblock %}
+{% block container_class %}container-fluid-admin{% endblock %}
 
 {% block content %}
 
+{# ✅ defaults: evita "filtros is undefined" #}
+{% set filtros = filtros if filtros is defined else {
+  'data_de':'', 'data_ate':'', 'tipo':'', 'viatura':'', 'cct':'', 'pm':'', 'matricula':'', 'q':''
+} %}
+{% set tipos = tipos if tipos is defined else [] %}
+{% set viaturas = viaturas if viaturas is defined else [] %}
+{% set total = total if total is defined else (ocorrencias|length) %}
+
+<div class="card mb-3">
+  <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <h5 class="mb-0">Administração - Ocorrências</h5>
+
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{{ url_for('index') }}" class="btn btn-sm btn-secondary">Voltar</a>
+
+      <a href="{{ url_for('admin_parametrizacoes') }}" class="btn btn-sm btn-outline-dark">
+        Parametrizações do sistema
+      </a>
+
+      <a href="{{ url_for('admin_viaturas') }}" class="btn btn-sm btn-outline-secondary">Viaturas</a>
+      <a href="{{ url_for('admin_logins') }}" class="btn btn-sm btn-outline-secondary">Logins</a>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ Filtros + Exportar -->
 <div class="card mb-3">
   <div class="card-body">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-      <h5 class="mb-0">Administrador - Todas as Ocorrências</h5>
-      <a href="{{ url_for('index') }}" class="btn btn-sm btn-secondary">Voltar</a>
-    </div>
+    <form method="get" class="row g-2 align-items-end">
+      <div class="col-12 col-md-2">
+        <label class="section-label mb-1">Data de</label>
+        <input type="date" class="form-control form-control-sm" name="data_de" value="{{ filtros.data_de }}">
+      </div>
 
-    <p class="text-muted mt-2 mb-0">
-      Filtra por qualquer campo usando os inputs por coluna e por intervalo de datas.
-    </p>
+      <div class="col-12 col-md-2">
+        <label class="section-label mb-1">Data até</label>
+        <input type="date" class="form-control form-control-sm" name="data_ate" value="{{ filtros.data_ate }}">
+      </div>
+
+      <div class="col-12 col-md-2">
+        <label class="section-label mb-1">Tipo</label>
+        <select class="form-select form-select-sm" name="tipo">
+          <option value="">Todos</option>
+          {% for t in tipos %}
+            <option value="{{ t }}" {% if filtros.tipo == t %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-12 col-md-2">
+        <label class="section-label mb-1">Viatura</label>
+        <select class="form-select form-select-sm" name="viatura">
+          <option value="">Todas</option>
+          {% for v in viaturas %}
+            <option value="{{ v }}" {% if filtros.viatura == v %}selected{% endif %}>{{ v }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="col-6 col-md-1">
+        <label class="section-label mb-1">Nº CCT</label>
+        <input type="text" class="form-control form-control-sm" name="cct" value="{{ filtros.cct }}">
+      </div>
+
+      <div class="col-6 col-md-1">
+        <label class="section-label mb-1">Nº PM</label>
+        <input type="text" class="form-control form-control-sm" name="pm" value="{{ filtros.pm }}">
+      </div>
+
+      <div class="col-12 col-md-2">
+        <label class="section-label mb-1">Matrícula (contém)</label>
+        <input type="text" class="form-control form-control-sm" name="matricula" value="{{ filtros.matricula }}">
+      </div>
+
+      <div class="col-12 col-md-4">
+        <label class="section-label mb-1">Pesquisa geral</label>
+        <input type="text" class="form-control form-control-sm" name="q" value="{{ filtros.q }}" placeholder="morada, tipo, descrição, etc.">
+      </div>
+
+      <div class="col-12 col-md-8 d-flex gap-2 justify-content-end flex-wrap">
+        <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin_ocorrencias') }}">
+          Limpar filtros
+        </a>
+
+        <button type="submit" class="btn btn-sm btn-primary">
+          Aplicar filtros
+        </button>
+
+        <!-- ✅ Exportar com os mesmos filtros -->
+        <a class="btn btn-sm btn-outline-success"
+           href="{{ url_for('admin_ocorrencias',
+                            data_de=filtros.data_de,
+                            data_ate=filtros.data_ate,
+                            tipo=filtros.tipo,
+                            viatura=filtros.viatura,
+                            cct=filtros.cct,
+                            pm=filtros.pm,
+                            matricula=filtros.matricula,
+                            q=filtros.q,
+                            export=1) }}">
+          Exportar CSV
+        </a>
+      </div>
+
+      <div class="col-12">
+        <small class="text-muted">Resultados: <strong>{{ total }}</strong></small>
+      </div>
+    </form>
   </div>
 </div>
 
 <div class="card">
   <div class="card-body">
-
-    {% if ocorrencias %}
-
-    <!-- Intervalo de datas + ações -->
-    <div class="row g-2 align-items-end mb-3">
-      <div class="col-12 col-md-3">
-        <label class="form-label mb-1 small text-muted">Data início</label>
-        <input type="date" id="dataInicio" class="form-control form-control-sm">
-      </div>
-
-      <div class="col-12 col-md-3">
-        <label class="form-label mb-1 small text-muted">Data fim</label>
-        <input type="date" id="dataFim" class="form-control form-control-sm">
-      </div>
-
-      <div class="col-12 col-md-6 d-flex gap-2 justify-content-md-end">
-        <button type="button" id="btnLimparFiltros" class="btn btn-sm btn-outline-secondary">
-          Limpar filtros
-        </button>
-
-        <button type="button" id="btnExportarCsv" class="btn btn-sm btn-success">
-          Exportar CSV (visível)
-        </button>
-      </div>
-    </div>
 
     <div class="table-responsive">
       <table class="table table-sm table-striped align-middle" id="tabelaOcorrencias">
@@ -53,31 +126,15 @@
             <th>Hora</th>
             <th>Período</th>
             <th>Viatura</th>
-            <th>Numero_ordem_CCT</th>
-            <th>Numero_ordem_PM</th>
-            <th>Tipo_ocorrencia</th>
-            <th>Matricula</th>
-            <th>Morada_completa</th>
-            <th>Latitude</th>
-            <th>Longitude</th>
+            <th>Nº CCT</th>
+            <th>Nº PM</th>
+            <th>Tipo</th>
+            <th>Matrícula</th>
+            <th>Morada</th>
+            <th>Lat</th>
+            <th>Lon</th>
             <th>Descrição</th>
-            <th class="text-end">Ações</th>
-          </tr>
-
-          <tr>
-            <th><input class="form-control form-control-sm filtro" data-col="0" placeholder="Filtrar."></th>
-            <th><input class="form-control form-control-sm filtro" data-col="1" placeholder="Filtrar."></th>
-            <th><input class="form-control form-control-sm filtro" data-col="2" placeholder="Filtrar."></th>
-            <th><input class="form-control form-control-sm filtro" data-col="3" placeholder="Filtrar."></th>
-            <th><input class="form-control form-control-sm filtro" data-col="4" placeholder="Filtrar."></th>
-            <th><input class="form-control form-control-sm filtro" data-col="5" placeholder="Filtrar."></th>
-            <th><input class="form-control form-control-sm filtro" data-col="6" placeholder="Filtrar."></th>
-            <th><input class="form-control form-control-sm filtro" data-col="7" placeholder="Filtrar."></th>
-            <th><input class="form-control form-control-sm filtro" data-col="8" placeholder="Filtrar."></th>
-            <th><input class="form-control form-control-sm filtro" data-col="9" placeholder="Filtrar."></th>
-            <th><input class="form-control form-control-sm filtro" data-col="10" placeholder="Filtrar."></th>
-            <th><input class="form-control form-control-sm filtro" data-col="11" placeholder="Filtrar."></th>
-            <th></th>
+            <th class="text-end"></th>
           </tr>
         </thead>
 
@@ -113,130 +170,11 @@
           </tr>
           {% endfor %}
         </tbody>
+
       </table>
     </div>
 
-    {% else %}
-      <div class="alert alert-secondary mb-0">Ainda não existem ocorrências registadas.</div>
-    {% endif %}
   </div>
 </div>
-
-<script>
-  const inputs = document.querySelectorAll(".filtro");
-  const table = document.getElementById("tabelaOcorrencias");
-  const tbodyRows = table ? Array.from(table.querySelectorAll("tbody tr")) : [];
-
-  const dataInicio = document.getElementById("dataInicio");
-  const dataFim = document.getElementById("dataFim");
-  const btnExportarCsv = document.getElementById("btnExportarCsv");
-  const btnLimparFiltros = document.getElementById("btnLimparFiltros");
-
-  function parseDataPt(ddmmyyyy) {
-    const m = (ddmmyyyy || "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (!m) return null;
-    const dd = parseInt(m[1], 10);
-    const mm = parseInt(m[2], 10) - 1;
-    const yyyy = parseInt(m[3], 10);
-    const d = new Date(yyyy, mm, dd);
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  function parseDataIso(yyyyMMdd) {
-    if (!yyyyMMdd) return null;
-    const d = new Date(yyyyMMdd + "T00:00:00");
-    return isNaN(d.getTime()) ? null : d;
-  }
-
-  function aplicarFiltros() {
-    const inicio = parseDataIso(dataInicio?.value);
-    const fim = parseDataIso(dataFim?.value);
-
-    tbodyRows.forEach(tr => {
-      let visivel = true;
-
-      // filtros texto por colunas
-      inputs.forEach(inp => {
-        const col = parseInt(inp.dataset.col, 10);
-        const termo = (inp.value || "").toLowerCase().trim();
-        if (!termo) return;
-
-        const td = tr.children[col];
-        const val = (td ? td.textContent : "").toLowerCase();
-
-        if (!val.includes(termo)) visivel = false;
-      });
-
-      // intervalo de datas (col 0)
-      if (visivel && (inicio || fim)) {
-        const dataTxt = (tr.children[0]?.textContent || "").trim();
-        const d = parseDataPt(dataTxt);
-
-        if (!d) {
-          visivel = false;
-        } else {
-          if (inicio && d < inicio) visivel = false;
-          if (fim) {
-            const fimIncl = new Date(fim.getFullYear(), fim.getMonth(), fim.getDate(), 23, 59, 59);
-            if (d > fimIncl) visivel = false;
-          }
-        }
-      }
-
-      tr.style.display = visivel ? "" : "none";
-    });
-  }
-
-  function limparFiltros() {
-    inputs.forEach(i => i.value = "");
-    if (dataInicio) dataInicio.value = "";
-    if (dataFim) dataFim.value = "";
-    aplicarFiltros();
-  }
-
-  function escapeCsv(val) {
-    const s = String(val ?? "");
-    if (s.includes(";") || s.includes('"') || s.includes("\n")) {
-      return `"${s.replace(/"/g, '""')}"`;
-    }
-    return s;
-  }
-
-  function exportarCsvVisivel() {
-    if (!table) return;
-
-    const headers = Array.from(table.querySelectorAll("thead tr:first-child th"))
-      .map(th => th.textContent.trim())
-      .filter(h => h !== "Ações"); // não exportar ações
-
-    const linhas = [headers.map(escapeCsv).join(";")];
-
-    tbodyRows.forEach(tr => {
-      if (tr.style.display === "none") return;
-
-      const tds = Array.from(tr.querySelectorAll("td"));
-      const dados = tds.slice(0, headers.length).map(td => escapeCsv(td.textContent.trim()));
-      linhas.push(dados.join(";"));
-    });
-
-    const csv = "\uFEFF" + linhas.join("\n"); // BOM p/ Excel PT
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "ocorrencias_admin_export.csv";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  inputs.forEach(inp => inp.addEventListener("input", aplicarFiltros));
-  dataInicio?.addEventListener("change", aplicarFiltros);
-  dataFim?.addEventListener("change", aplicarFiltros);
-  btnExportarCsv?.addEventListener("click", exportarCsvVisivel);
-  btnLimparFiltros?.addEventListener("click", limparFiltros);
-</script>
 
 {% endblock %}

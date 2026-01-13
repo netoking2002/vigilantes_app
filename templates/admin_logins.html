@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% block title %}Admin - Gerir logins{% endblock %}
+{% block container_class %}container-fluid-admin{% endblock %}
+
+{% block content %}
+
+<div class="card mb-3">
+  <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+    <h5 class="mb-0">Administração - Gerir logins</h5>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('admin_ocorrencias') }}" class="btn btn-sm btn-secondary">Voltar</a>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Adicionar -->
+  <div class="col-12 col-xl-5">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="mb-3">Adicionar nº de ordem permitido</h6>
+
+        <form method="post" class="row g-2">
+          <input type="hidden" name="acao" value="adicionar">
+
+          <div class="col-12 col-md-4">
+            <label class="form-label mb-1">Nº de ordem</label>
+            <input type="text" name="ordem" class="form-control" placeholder="190123" required>
+          </div>
+
+          <div class="col-12 col-md-8">
+            <label class="form-label mb-1">Email</label>
+            <input type="email" name="email" class="form-control" placeholder="email@dominio.pt" required>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <label class="form-label mb-1">Tipo de utilizador</label>
+            <select name="role" class="form-select">
+              <option value="user" selected>Utilizador</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+
+          <div class="col-12 col-md-6 d-grid align-items-end">
+            <label class="form-label mb-1">&nbsp;</label>
+            <button type="submit" class="btn btn-primary">Adicionar</button>
+          </div>
+
+          <div class="col-12">
+            <small class="text-muted">
+              Criado com password temporária <strong>12345678</strong> e obriga a trocar no login.
+            </small>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Editar (na mesma página) -->
+    <div class="card mt-3">
+      <div class="card-body">
+        <h6 class="mb-3">Editar utilizador</h6>
+
+        {% if edit_user %}
+          <form method="post" class="row g-2">
+            <input type="hidden" name="acao" value="guardar_edicao">
+            <input type="hidden" name="ordem_antiga" value="{{ edit_user.ordem }}">
+
+            <div class="col-12 col-md-4">
+              <label class="form-label mb-1">Nº de ordem</label>
+              <input type="text" name="ordem" class="form-control" value="{{ edit_user.ordem }}" required>
+            </div>
+
+            <div class="col-12 col-md-8">
+              <label class="form-label mb-1">Email</label>
+              <input type="email" name="email" class="form-control" value="{{ edit_user.email }}" required>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label mb-1">Tipo de utilizador</label>
+              <select name="role" class="form-select">
+                <option value="user" {% if edit_user.role != 'admin' %}selected{% endif %}>Utilizador</option>
+                <option value="admin" {% if edit_user.role == 'admin' %}selected{% endif %}>Administrador</option>
+              </select>
+            </div>
+
+            <div class="col-12 col-md-6">
+              <label class="form-label mb-1">Estado</label>
+              <select name="active" class="form-select">
+                <option value="1" {% if edit_user.active %}selected{% endif %}>Ativo</option>
+                <option value="0" {% if not edit_user.active %}selected{% endif %}>Inativo</option>
+              </select>
+            </div>
+
+            <div class="col-12 d-flex gap-2 justify-content-end">
+              <a class="btn btn-outline-secondary"
+                 href="{{ url_for('admin_logins', q=q, status=status) }}">
+                Cancelar
+              </a>
+
+              <button type="submit" class="btn btn-primary">
+                Guardar alterações
+              </button>
+            </div>
+          </form>
+
+          <hr>
+
+          <form method="post" class="d-flex justify-content-end"
+                onsubmit="return confirm('Eliminar o utilizador {{edit_user.ordem}}? Esta ação é irreversível.');">
+            <input type="hidden" name="acao" value="eliminar">
+            <input type="hidden" name="ordem" value="{{ edit_user.ordem }}">
+            <button type="submit" class="btn btn-danger">
+              Eliminar utilizador
+            </button>
+          </form>
+        {% else %}
+          <div class="text-muted">
+            Clica em <strong>Editar</strong> num utilizador da lista para alterar os dados.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Lista com pesquisa/filtro -->
+  <div class="col-12 col-xl-7">
+    <div class="card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+          <h6 class="mb-0">Utilizadores</h6>
+
+          <form method="get" class="d-flex gap-2 flex-wrap">
+            <input type="text" name="q" class="form-control form-control-sm" style="width:180px;"
+                   value="{{ q }}" placeholder="Pesquisar nº ordem...">
+
+            <select name="status" class="form-select form-select-sm" style="width:160px;">
+              <option value="todos" {% if status=='todos' %}selected{% endif %}>Todos</option>
+              <option value="ativos" {% if status=='ativos' %}selected{% endif %}>Ativos</option>
+              <option value="inativos" {% if status=='inativos' %}selected{% endif %}>Inativos</option>
+            </select>
+
+            <button class="btn btn-sm btn-outline-primary" type="submit">Aplicar</button>
+            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin_logins') }}">Limpar</a>
+          </form>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>Nº ordem</th>
+                <th>Email</th>
+                <th>Tipo</th>
+                <th>Ativo</th>
+                <th>Trocar password</th>
+                <th class="text-end">Ações</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {% for u in users %}
+              <tr {% if edit_user and u.ordem == edit_user.ordem %}class="table-warning"{% endif %}>
+                <td><strong>{{ u.ordem }}</strong></td>
+                <td>{{ u.email }}</td>
+                <td>
+                  {% if u.role == 'admin' %}
+                    <span class="badge text-bg-primary">Admin</span>
+                  {% else %}
+                    <span class="badge text-bg-secondary">User</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if u.active %}
+                    <span class="badge text-bg-success">Sim</span>
+                  {% else %}
+                    <span class="badge text-bg-danger">Não</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if u.must_change %}
+                    <span class="badge text-bg-warning">Sim</span>
+                  {% else %}
+                    <span class="badge text-bg-success">Não</span>
+                  {% endif %}
+                </td>
+
+                <td class="text-end" style="white-space:nowrap;">
+                  <form method="post" class="d-inline"
+                        onsubmit="return confirm('Repor password do nº {{u.ordem}} para 12345678?');">
+                    <input type="hidden" name="acao" value="reset">
+                    <input type="hidden" name="ordem" value="{{ u.ordem }}">
+                    <button type="submit" class="btn btn-sm btn-outline-warning">
+                      Repor palavra-passe
+                    </button>
+                  </form>
+
+                  <form method="post" class="d-inline">
+                    <input type="hidden" name="acao" value="toggle_active">
+                    <input type="hidden" name="ordem" value="{{ u.ordem }}">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">
+                      {% if u.active %}Desativar{% else %}Ativar{% endif %}
+                    </button>
+                  </form>
+
+                  <a class="btn btn-sm btn-outline-primary"
+                     href="{{ url_for('admin_logins', q=q, status=status, edit=u.ordem) }}">
+                    Editar
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
+
+              {% if users|length == 0 %}
+              <tr>
+                <td colspan="6" class="text-muted">Sem resultados.</td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

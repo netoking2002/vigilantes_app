@@ -4,143 +4,106 @@
 
 {% block content %}
 
-<div class="main-form-card mb-4">
-  <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
-    <div class="main-form-title mb-0">Formulário Principal</div>
+<div class="card main-form-card mb-3">
+  <div class="card-body">
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+      <div class="main-form-title mb-0">Dados do Serviço</div>
+
+      {% if registo.registo_guardado %}
+      <button class="btn btn-sm btn-outline-secondary"
+              type="button"
+              data-bs-toggle="collapse"
+              data-bs-target="#formPrincipalCollapse">
+          Editar dados
+      </button>
+      {% endif %}
+    </div>
 
     {% if registo.registo_guardado %}
-      <button
-        type="button"
-        class="btn btn-sm btn-outline-primary"
-        data-bs-toggle="collapse"
-        data-bs-target="#formPrincipalCollapse"
-        aria-expanded="false"
-        aria-controls="formPrincipalCollapse"
-      >
-        Editar dados
-      </button>
-    {% endif %}
-  </div>
-
-  {% if registo.registo_guardado %}
-  <!-- ✅ Quando guardado: mostrar apenas o resumo (minimizado) -->
-  <div class="mt-3 p-3 rounded-3 border" style="background:#f9fafb;">
-      <div class="section-label mb-2">Dados do Registo:</div>
-      <div class="row small">
+    <div class="mt-3">
+      <div class="row g-2">
           <div class="col-12 col-md-4">
-              <p class="mb-1"><strong>Data:</strong> {{ registo.data }}</p>
+              <p class="mb-1"><strong>Data:</strong> {{ registo.data or '-' }}</p>
+          </div>
+          <div class="col-12 col-md-4">
+              <p class="mb-1"><strong>Período:</strong> {{ registo.periodo or '-' }}</p>
+          </div>
+          <div class="col-12 col-md-4">
               <p class="mb-1"><strong>CCT:</strong> {{ registo.num_ordem_cct or '-' }}</p>
           </div>
           <div class="col-12 col-md-4">
-              <p class="mb-1"><strong>Período:</strong> {{ registo.periodo }}</p>
-              <p class="mb-1"><strong>Número PM:</strong> {{ registo.num_ordem_pm or '-' }}</p>
+              <p class="mb-1"><strong>Nº PM:</strong> {{ registo.num_ordem_pm or '-' }}</p>
           </div>
           <div class="col-12 col-md-4">
               <p class="mb-1"><strong>Viatura:</strong> {{ registo.viatura or '-' }}</p>
           </div>
       </div>
-  </div>
-  {% endif %}
+    </div>
+    {% endif %}
 
-  <!-- ✅ Collapse: se NÃO estiver guardado, começa aberto; se estiver guardado, começa fechado -->
-  <div class="collapse {% if not registo.registo_guardado %}show{% endif %} mt-3" id="formPrincipalCollapse">
+    <div class="collapse {% if not registo.registo_guardado %}show{% endif %} mt-3"
+         id="formPrincipalCollapse">
+      <form method="post" class="row g-3">
+        <input type="hidden" name="acao" value="guardar_registo">
 
-    <form method="post" class="row g-3">
-      <input type="hidden" name="acao" value="guardar_registo">
-
-      <!-- Data -->
-      <div class="col-12 col-lg-4">
+        <div class="col-12 col-lg-4">
           <label class="section-label mb-1">Data *</label>
-          <input type="date"
-                 name="data"
-                 class="form-control"
-                 value="{{ data_iso }}">
-      </div>
 
-      <!-- Período do dia -->
-      <div class="col-12 col-lg-4">
-          <label class="section-label mb-1">Período do dia *</label>
+          <input type="date" class="form-control" value="{{ data_iso }}" disabled>
+          <input type="hidden" name="data" value="{{ data_iso }}">
+        </div>
+
+        <div class="col-12 col-lg-4">
+          <label class="section-label mb-1">Período *</label>
+
+          <input type="hidden" name="periodo" id="inputPeriodo" value="{{ registo.periodo }}">
+
           <div class="d-flex gap-2 mt-1">
-              <input type="hidden" name="periodo"
-                     id="inputPeriodo"
-                     value="{{ registo.periodo }}">
+            <button type="button"
+                    class="btn btn-periodo {% if registo.periodo == 'Manhã' %}active{% endif %}"
+                    disabled>Manhã</button>
 
-              <button type="button"
-                      class="btn btn-periodo {% if registo.periodo == 'Manhã' %}active{% endif %}"
-                      onclick="selecionarPeriodo('Manhã')"
-                      id="btnManha">
-                  Manhã
-              </button>
-
-              <button type="button"
-                      class="btn btn-periodo {% if registo.periodo == 'Tarde' %}active{% endif %}"
-                      onclick="selecionarPeriodo('Tarde')"
-                      id="btnTarde">
-                  Tarde
-              </button>
+            <button type="button"
+                    class="btn btn-periodo {% if registo.periodo == 'Tarde' %}active{% endif %}"
+                    disabled>Tarde</button>
           </div>
-      </div>
+        </div>
 
-      <!-- Viatura -->
-      <div class="col-12 col-lg-4">
+        <div class="col-12 col-lg-4">
           <label class="section-label mb-1">Viatura *</label>
-          <select name="viatura"
-                  id="selectViatura"
-                  class="form-select"
-                  onchange="mostrarOutroVeiculo()">
-
-              <option value="" {% if not registo.viatura %}selected{% endif %} disabled>
-                  Selecione uma viatura
-              </option>
-
-              {% for v in viaturas %}
-                  <option value="{{ v }}"
-                          {% if registo.viatura == v %}selected{% endif %}>
-                      {{ v }}
-                  </option>
-              {% endfor %}
-
-              <option value="OUTRA"
-                      {% if registo.viatura and registo.viatura not in viaturas %}selected{% endif %}>
-                  Outra
-              </option>
+          <select name="viatura" class="form-select" required>
+            <option value="" disabled {% if not registo.viatura %}selected{% endif %}>Selecionar</option>
+            {% for v in viaturas %}
+              <option value="{{ v }}" {% if registo.viatura == v %}selected{% endif %}>{{ v }}</option>
+            {% endfor %}
           </select>
+        </div>
+
+        <!-- CCT bloqueado -->
+        <div class="col-12 col-lg-6">
+          <label class="section-label mb-1">CCT *</label>
 
           <input type="text"
-                 id="inputOutroVeiculo"
-                 name="outra_viatura"
-                 class="form-control mt-2"
-                 placeholder="Introduz outra viatura"
-                 style="display:none"
-                 value="{% if registo.viatura and registo.viatura not in viaturas %}{{ registo.viatura }}{% endif %}">
-      </div>
-
-      <!-- CCT -->
-      <div class="col-12 col-lg-6">
-          <label class="section-label mb-1">CCT *</label>
-          <input type="number"
-                 name="num_ordem_cct"
                  class="form-control"
-                 placeholder="Número de CCT"
-                 value="{{ registo.num_ordem_cct }}">
-      </div>
+                 value="{{ current_user_ordem }}"
+                 readonly
+                 disabled>
 
-      <!-- Número PM -->
-      <div class="col-12 col-lg-6">
+          <input type="hidden" name="num_ordem_cct" value="{{ current_user_ordem }}">
+        </div>
+
+        <div class="col-12 col-lg-6">
           <label class="section-label mb-1">Número PM *</label>
-          <input type="number"
-                 name="num_ordem_pm"
-                 class="form-control"
-                 placeholder="Insere o número do agente PM"
-                 value="{{ registo.num_ordem_pm }}">
-      </div>
+          <input type="number" name="num_ordem_pm" class="form-control"
+                 value="{{ registo.num_ordem_pm }}" required>
+        </div>
 
-      <div class="col-12 d-flex justify-content-end mt-2">
-          <button type="submit" class="btn btn-guardar">
-              Guardar Dados
-          </button>
-      </div>
-    </form>
+        <div class="col-12 d-flex justify-content-end">
+          <button type="submit" class="btn btn-guardar">Guardar Dados</button>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
@@ -148,18 +111,19 @@
 
 <div class="card mb-3">
   <div class="card-body">
-    <h5 class="card-title mb-3" style="font-size:22px; font-weight:600;">
-        Registo de Ocorrências
-    </h5>
+    <h5 class="card-title mb-3">Registo de Ocorrências</h5>
 
-    <div class="row g-3 mb-3 justify-content-start">
+    <!-- ✅ Cards como BOTÕES (como pediste) -->
+    <div class="row g-3 mb-3">
       {% for tipo in tipos_ocorrencia %}
-      <div class="col-12 col-sm-6 col-lg-3 d-flex">
-        <a href="{{ url_for('nova_ocorrencia') }}?tipo={{ tipo | urlencode }}"
-           class="oc-box flex-fill text-center">
+      <div class="col-12 col-sm-6 col-md-3">
+        <form method="get" action="{{ url_for('nova_ocorrencia') }}" class="m-0">
+          <input type="hidden" name="tipo" value="{{ tipo }}">
+          <button type="submit" class="oc-box w-100 text-start">
             <div class="oc-title">{{ tipo }}</div>
             <div class="oc-sub">Nova Ocorrência</div>
-        </a>
+          </button>
+        </form>
       </div>
       {% endfor %}
     </div>
@@ -176,19 +140,35 @@
             <th>Hora</th>
             <th>Tipo</th>
             <th>Matrícula</th>
+            <th>Morada</th>
             <th class="text-end">Ações</th>
           </tr>
         </thead>
         <tbody>
         {% for o in ocorrencias %}
           <tr>
-            <td><a href="{{ url_for('detalhe_ocorrencia', occ_id=o.id) }}" class="text-decoration-none">{{ o.hora }}</a></td>
-            <td><a href="{{ url_for('detalhe_ocorrencia', occ_id=o.id) }}" class="text-decoration-none">{{ o.tipo }}</a></td>
-            <td><a href="{{ url_for('detalhe_ocorrencia', occ_id=o.id) }}" class="text-decoration-none">{{ o.matricula or '-' }}</a></td>
+            <!-- ✅ CLICÁVEL: abre detalhe da ocorrência -->
+            <td>
+              <a href="{{ url_for('detalhe_ocorrencia', occ_id=o.id) }}"
+                 class="text-decoration-none">{{ o.hora }}</a>
+            </td>
+            <td>
+              <a href="{{ url_for('detalhe_ocorrencia', occ_id=o.id) }}"
+                 class="text-decoration-none">{{ o.tipo }}</a>
+            </td>
+            <td>
+              <a href="{{ url_for('detalhe_ocorrencia', occ_id=o.id) }}"
+                 class="text-decoration-none">{{ o.matricula or '-' }}</a>
+            </td>
+            <td>{{ o.morada or '-' }}</td>
+
             <td class="text-end">
-              <form method="post" action="{{ url_for('apagar_ocorrencia', occ_id=o.id) }}"
+              <form method="post"
+                    action="{{ url_for('apagar_ocorrencia', occ_id=o.id) }}"
                     onsubmit="return confirm('Eliminar esta ocorrência?');">
-                <button type="submit" class="btn btn-sm btn-outline-danger">Eliminar</button>
+                <button type="submit" class="btn btn-sm btn-outline-danger">
+                  Eliminar
+                </button>
               </form>
             </td>
           </tr>
@@ -197,74 +177,32 @@
       </table>
     </div>
     {% else %}
-      <div class="alert alert-secondary mb-0">Ainda não há ocorrências registadas.</div>
+      <div class="alert alert-secondary mb-0">
+        Ainda não há ocorrências registadas.
+      </div>
     {% endif %}
   </div>
 </div>
 
-<form method="post" action="{{ url_for('fim_servico') }}" onsubmit="return confirm('Terminar serviço e gerar ficheiro CSV?');">
-    <button type="submit" class="btn btn-danger w-100">Fim de serviço (gerar CSV)</button>
+<form method="post"
+      action="{{ url_for('fim_servico') }}"
+      onsubmit="return confirm('Confirmas o fim de serviço? Os dados serão guardados.');">
+  <button type="submit" class="btn btn-danger w-100">
+    Fim de serviço
+  </button>
 </form>
 
 {% else %}
 <div class="alert alert-warning">
-  Preenche e guarda o formulário principal (Data, Período, Viatura, CCT e Número PM) para poderes registar ocorrências.
+  Preenche e guarda o formulário principal para poderes registar ocorrências.
 </div>
 {% endif %}
 
 <script>
-    function selecionarPeriodo(valor) {
-        const inputPeriodo = document.getElementById('inputPeriodo');
-        const btnManha = document.getElementById('btnManha');
-        const btnTarde = document.getElementById('btnTarde');
-
-        inputPeriodo.value = valor;
-        btnManha.classList.toggle('active', valor === 'Manhã');
-        btnTarde.classList.toggle('active', valor === 'Tarde');
-    }
-
-    function mostrarOutroVeiculo() {
-        const select = document.getElementById("selectViatura");
-        const campoOutro = document.getElementById("inputOutroVeiculo");
-
-        if (!select || !campoOutro) return;
-
-        if (select.value === "OUTRA") {
-            campoOutro.style.display = "block";
-            campoOutro.required = true;
-        } else {
-            campoOutro.style.display = "none";
-            campoOutro.required = false;
-        }
-    }
-
-    function autoPreencherSeNaoGuardado() {
-        const registoGuardado = {{ 'true' if registo.registo_guardado else 'false' }};
-        if (registoGuardado) return;
-
-        // Data: hoje (se estiver vazio)
-        const inputData = document.querySelector('input[name="data"]');
-        if (inputData && !inputData.value) {
-            const hoje = new Date();
-            const yyyy = hoje.getFullYear();
-            const mm = String(hoje.getMonth() + 1).padStart(2, '0');
-            const dd = String(hoje.getDate()).padStart(2, '0');
-            inputData.value = `${yyyy}-${mm}-${dd}`;
-        }
-
-        // Período automático
-        const agora = new Date();
-        if (agora.getHours() < 13) {
-            selecionarPeriodo('Manhã');
-        } else {
-            selecionarPeriodo('Tarde');
-        }
-    }
-
-    window.onload = function () {
-        mostrarOutroVeiculo();
-        autoPreencherSeNaoGuardado();
-    }
+  {% if fim_ok %}
+    alert("Dados guardados.");
+    window.location.replace("{{ url_for('index') }}");
+  {% endif %}
 </script>
 
 {% endblock %}

@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Login - MyVigilantes{% endblock %}
+
+{% block content %}
+<style>
+  /* ✅ Forçar branco total na página de login (mata a cor do base.html) */
+  html, body { height: 100%; }
+  body { background: #ffffff !important; }
+
+  /* caso o base use containers com padding, anulamos no login */
+  .main-container {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+  }
+
+  /* layout do login */
+  .login-page {
+    min-height: 100vh;
+    width: 100%;
+    background: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .login-wrap {
+    width: 100%;
+    max-width: 560px;
+    text-align: center;
+  }
+
+  /* ✅ Logo maior e responsivo ao aparelho */
+  .brand-logo {
+    width: min(320px, 78vw);   /* grande em desktop, ajusta em mobile */
+    height: auto;
+    object-fit: contain;
+    display: block;
+    margin: 0 auto 14px;
+  }
+
+  .brand-title {
+    font-size: clamp(18px, 3.2vw, 28px);
+    font-weight: 800;
+    color: #0b1b34;
+    margin: 0;
+  }
+
+  .brand-sub {
+    font-size: clamp(11px, 1.8vw, 13px);
+    font-weight: 700;
+    color: #5b677a;
+    margin: 6px 0 18px;
+    letter-spacing: .2px;
+  }
+
+  .login-card {
+    background: #ffffff;
+    border: 1px solid #e6ebf3;
+    border-radius: 16px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.10);
+    padding: 22px 22px 18px;
+    text-align: left;
+  }
+
+  .login-card h2 {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0b1b34;
+    margin: 0 0 2px;
+    text-align: center;
+  }
+
+  .login-hint {
+    font-size: 13px;
+    color: #6b7280;
+    margin: 0 0 16px;
+    text-align: center;
+  }
+
+  .field-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #6b7280;
+    margin-bottom: 6px;
+  }
+
+  .input-soft {
+    border-radius: 12px;
+    border: 1px solid #dbe4f0;
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+
+  .input-soft:focus {
+    border-color: #0b4aa2;
+    box-shadow: 0 0 0 3px rgba(11, 74, 162, 0.10);
+  }
+
+  .btn-login {
+    background: #0b4aa2;
+    border-color: #0b4aa2;
+    color: #fff;
+    border-radius: 999px;
+    font-weight: 800;
+    padding: 12px 18px;
+  }
+
+  .btn-login:hover {
+    background: #083b84;
+    border-color: #083b84;
+    color: #fff;
+  }
+
+  .support {
+    font-size: 13px;
+    color: #6b7280;
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  .support a {
+    color: #0b4aa2;
+    font-weight: 800;
+    text-decoration: none;
+  }
+
+  .support a:hover { text-decoration: underline; }
+
+  .footer-mini {
+    margin-top: 14px;
+    font-size: 12px;
+    color: #8a94a6;
+    text-align: center;
+  }
+</style>
+
+<div class="login-page">
+  <div class="login-wrap">
+
+    <img
+      src="{{ url_for('static', filename='img/LOGOMyVigilantes.png') }}"
+      alt="MyVigilantes"
+      class="brand-logo"
+    >
+
+    <!-- ✅ Texto pedido -->
+    <h1 class="brand-title">Sistema de Fiscalização - CARRIS</h1>
+    <div class="brand-sub">CARRIS - Central de Controlo de Tráfego</div>
+
+    <div class="login-card">
+      <h2>Bem-vindo</h2>
+      <div class="login-hint">Introduza as suas credenciais para aceder ao MyVigilantes</div>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-3">
+            {% for cat, msg in messages %}
+              <div class="alert alert-{{cat}} mb-2">{{ msg }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form method="post" class="row g-3">
+        <div class="col-12">
+          <div class="field-label">Utilizador</div>
+          <input
+            type="text"
+            name="ordem"
+            class="form-control input-soft"
+            placeholder="N.º de Ordem"
+            inputmode="numeric"
+            autocomplete="username"
+            required
+            autofocus
+          >
+        </div>
+
+        <div class="col-12">
+          <div class="field-label">Palavra-passe</div>
+          <input
+            type="password"
+            name="password"
+            class="form-control input-soft"
+            autocomplete="current-password"
+            required
+          >
+        </div>
+
+        <div class="col-12">
+          <button type="submit" class="btn btn-login w-100">Entrar</button>
+        </div>
+
+        <div class="col-12 support">
+          Problemas de acesso?
+          <a href="mailto:neto.jose.190497@gmail.com?subject=Pedido%20de%20suporte%20-%20MyVigilantes">
+            Contacte o suporte
+          </a>
+        </div>
+      </form>
+    </div>
+
+    <div class="footer-mini">© 2026 Carris. Todos os direitos reservados.</div>
+  </div>
+</div>
+
+{% endblock %}
